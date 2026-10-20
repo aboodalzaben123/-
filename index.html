@@ -23,7 +23,7 @@ html.pane #splB,html.pane #splB2,html.pane #bkNag,html.pane #stNote,html.pane #u
 #tools.fr,#styl.fr{-webkit-mask-image:linear-gradient(to left,transparent 0,#000 28px);mask-image:linear-gradient(to left,transparent 0,#000 28px)}
 #tools.fl.fr,#styl.fl.fr{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%)}
 </style>
-<style id="geocss">#geo{padding-top:4px}#geoTools,#geoActs{gap:5px;margin:6px 0 0}#geoTools button,#geoActs button{padding:6px 8px;font-size:13px}#geoSt{min-height:20px;margin:6px 2px}#geoBoard{width:100%;height:320px;direction:ltr;touch-action:none;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--line);overflow:hidden;position:relative}#geoBoard svg{touch-action:none;display:block}#calc.mini #geo{display:none!important}</style>
+<style id="geocss">#geo{padding-top:4px}#geoTools,#geoActs{gap:5px;margin:6px 0 0}#geoTools button,#geoActs button{padding:6px 8px;font-size:13px}#geoSt{min-height:20px;margin:6px 2px}#geoBoard{width:100%;max-width:560px;height:380px;margin:0 auto;direction:ltr;touch-action:none;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--line);overflow:hidden;position:relative}#geoBoard svg{touch-action:none;display:block}#calc.mini #geo{display:none!important}</style>
 <style id="foldskin">.fold.fsk{background:transparent!important;padding:2px 0!important;display:flex;justify-content:center}.fsk svg{width:100%;height:84px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}.fsk svg *{vector-effect:none}.grid.list .bk .fold.fsk svg{height:56px}.bk .mn{z-index:5}</style>
 <style id="fitfix">.panel,#dlg,#pmenu{max-width:min(96vw,calc(100% - 12px))!important}#pmenu{max-height:calc(100% - 16px);overflow:auto}</style>
 <style id="appcss">
@@ -5194,7 +5194,7 @@ function loadJXG(){
 }
 
 /* ---------- حالة الأداة ---------- */
-let edBox=null,board=null,tool='move',buf=[],acts=[],pts=[],pcount=0,snap=true,gridObj=null,axes=null;
+let edBox=null,board=null,tool='move',buf=[],acts=[],pts=[],pcount=0,snap=true,gridObj=null,axes=null,WB=[-12,8,12,-8];
 const say=m=>{st.textContent=m||''};
 const toast=m=>{say(m);const t=$('toast');if(!t)return;t.textContent=m;t.style.opacity=1;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.opacity=0},2600)};
 const safe=f=>{try{return f()}catch(e){return false}};
@@ -5258,8 +5258,8 @@ const MAKE={
     reg({kind:'o',els:[s],deps:[A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,A,B,true),mkHost:()=>[s,false],col:COL});
   },
   line(A,B){
-    const s=board.create('line',[A,B],{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,straightFirst:true,straightLast:true,withLabel:false});
-    reg({kind:'o',els:[s],deps:[A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,A,B,false),mkHost:()=>[s,false],col:COL});
+    const s=ext(A,B,false,{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,withLabel:false});
+    reg({kind:'o',els:[s].concat(s._ep),deps:[A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,A,B,false),mkHost:()=>[s,false],col:COL});
   },
   tri(A,B,C){
     const p=board.create('polygon',[A,B,C],{fillColor:'#3b82f6',fillOpacity:.12,highlightFillColor:'#3b82f6',highlightFillOpacity:.12,withLabel:false,borders:{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,withLabel:false}});
@@ -5351,27 +5351,27 @@ const MAKE={
   },
   perp(P,A,B){
     const Q=hp(()=>P.X()-(B.Y()-A.Y()),()=>P.Y()+(B.X()-A.X()));
-    const s=board.create('line',[P,Q],lnSty());
-    reg({kind:'o',els:[Q,s],deps:[P,A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,P,Q,false),mkHost:()=>[s,false],col:TC});
+    const s=ext(P,Q,false,lnSty());
+    reg({kind:'o',els:[Q,s].concat(s._ep),deps:[P,A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,P,Q,false),mkHost:()=>[s,false],col:TC});
   },
   par(P,A,B){
     const Q=hp(()=>P.X()+B.X()-A.X(),()=>P.Y()+B.Y()-A.Y());
-    const s=board.create('line',[P,Q],lnSty());
-    reg({kind:'o',els:[Q,s],deps:[P,A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,P,Q,false),mkHost:()=>[s,false],col:TC});
+    const s=ext(P,Q,false,lnSty());
+    reg({kind:'o',els:[Q,s].concat(s._ep),deps:[P,A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,P,Q,false),mkHost:()=>[s,false],col:TC});
   },
   pbis(A,B){
     const M=board.create('point',[()=>(A.X()+B.X())/2,()=>(A.Y()+B.Y())/2],{size:3,fixed:true,withLabel:false,name:'',showInfobox:false,strokeColor:TC,fillColor:TC,highlight:false});
     const Q=hp(()=>M.X()-(B.Y()-A.Y()),()=>M.Y()+(B.X()-A.X()));
-    const s=board.create('line',[M,Q],lnSty());
-    reg({kind:'o',els:[M,Q,s],deps:[A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,M,Q,false),mkHost:()=>[s,false],col:TC});
+    const s=ext(M,Q,false,lnSty());
+    reg({kind:'o',els:[M,Q,s].concat(s._ep),deps:[A,B],hit:(x,y)=>s.hasPoint(x,y),hd:(x,y)=>dSeg(x,y,M,Q,false),mkHost:()=>[s,false],col:TC});
   },
   abis(A,V,C){
     const dir=()=>{const a=Math.hypot(A.X()-V.X(),A.Y()-V.Y())||1,c=Math.hypot(C.X()-V.X(),C.Y()-V.Y())||1;
       const ux=(A.X()-V.X())/a,uy=(A.Y()-V.Y())/a,vx=(C.X()-V.X())/c,vy=(C.Y()-V.Y())/c,sx=ux+vx,sy=uy+vy;
       return Math.hypot(sx,sy)<1e-9?[-uy,ux]:[sx,sy]};
     const Q=hp(()=>V.X()+dir()[0],()=>V.Y()+dir()[1]);
-    const s=board.create('line',[V,Q],Object.assign(lnSty(),{straightFirst:false,straightLast:true}));
-    reg({kind:'o',els:[Q,s],deps:[A,V,C],hit:(x,y)=>s.hasPoint(x,y),col:TC});
+    const s=ext(V,Q,true,lnSty());
+    reg({kind:'o',els:[Q,s].concat(s._ep),deps:[A,V,C],hit:(x,y)=>s.hasPoint(x,y),col:TC});
   },
   tan(P,O,A,sg){
     sg=sg||0;
@@ -5383,8 +5383,8 @@ const MAKE={
     const s1=board.create('segment',[P,T1],st(1)),s2=board.create('segment',[P,T2],st(-1));
     /* لو النقطة على الدائرة: مماس واحد عمودي على نصف القطر */
     const Q0=hp(()=>onC()?P.X()-(P.Y()-O.Y()):NaN,()=>onC()?P.Y()+(P.X()-O.X()):NaN);
-    const L0=board.create('line',[P,Q0],lnSty());
-    reg({kind:'o',els:[T1,T2,s1,s2,Q0,L0],deps:[P,O,A],tm:sg,hit:(x,y)=>s1.hasPoint(x,y)||s2.hasPoint(x,y)||L0.hasPoint(x,y),col:TC});
+    const L0=ext(P,Q0,false,lnSty());
+    reg({kind:'o',els:[T1,T2,s1,s2,Q0,L0].concat(L0._ep),deps:[P,O,A],tm:sg,hit:(x,y)=>s1.hasPoint(x,y)||s2.hasPoint(x,y)||L0.hasPoint(x,y),col:TC});
     return onC()?'المماس عند النقطة عمودي على نصف القطر':dd()>rr()*(1+1e-9)?'طول المماس = '+fmt2(Math.sqrt(dd()*dd()-rr()*rr())):'النقطة داخل الدائرة، ما في مماس منها. حرّكها لبرّا الدائرة.';
   },
   rpoly(A,B){
@@ -5411,6 +5411,22 @@ const MAKE={
 /* ---------- إنشاءات هندسية: عمودي، موازي، منصّفات، مماس، مضلعات ---------- */
 const TC='#0d9488';let grpN=0,nSel=null,namesOff=false,curCol='#dc2626',curW='',curO=.35;
 function hp(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})}
+/* مستقيم/شعاع بدون لانهاية: قطعة بتنقصّ على حدود لوحة الرسم المحدودة (WB) */
+function clipLn(px,py,dx,dy,ray){
+  const x0=WB[0],y1=WB[1],x1=WB[2],y0=WB[3];let t0=ray?0:-1e9,t1=1e9;
+  const c=[[-dx,px-x0],[dx,x1-px],[-dy,py-y0],[dy,y1-py]];
+  for(let i=0;i<4;i++){const p=c[i][0],q=c[i][1];
+    if(Math.abs(p)<1e-12){if(q<0)return null}
+    else{const r=q/p;if(p<0){if(r>t0)t0=r}else{if(r<t1)t1=r}}}
+  return t0>t1?null:[px+t0*dx,py+t0*dy,px+t1*dx,py+t1*dy];
+}
+function ext(P,Q,ray,o){
+  const g=()=>{const dx=Q.X()-P.X(),dy=Q.Y()-P.Y();return Math.hypot(dx,dy)>1e-12?clipLn(P.X(),P.Y(),dx,dy,ray):null};
+  const A=hp(()=>{const r=g();return r?r[0]:NaN},()=>{const r=g();return r?r[1]:NaN});
+  const B=hp(()=>{const r=g();return r?r[2]:NaN},()=>{const r=g();return r?r[3]:NaN});
+  const s=board.create('segment',[A,B],Object.assign({},o,{straightFirst:false,straightLast:false}));
+  s._ep=[A,B];return s;
+}
 const lnSty=()=>({strokeColor:TC,strokeWidth:2,highlightStrokeColor:TC,straightFirst:true,straightLast:true,withLabel:false});
 function polyInfo(V){let a=0,p=0;for(let i=0;i<V.length;i++){const u=V[i],w=V[(i+1)%V.length];a+=u.X()*w.Y()-w.X()*u.Y();p+=Math.hypot(w.X()-u.X(),w.Y()-u.Y())}return 'المحيط = '+fmt2(p)+'  ·  المساحة = '+fmt2(Math.abs(a)/2)}
 function polyAct(V){
@@ -5542,7 +5558,7 @@ DEMOS.move=[c=>c.sw('tri',TRI),'اسحب أي نقطة من المثلث وشو�
 DEMOS.grab=[c=>c.sw('tri',TRI),'اضغط على المثلث واسحبه وفلّته فوق صفحة من الدفتر: بينحط كصورة. (نفس زر «⠿ اسحب للدفتر»)','grab'];
 DEMOS.point=[c=>{c.S('point');c.T(-3,2);c.T(0,-2);c.T(3,1)},'كل ضغطة بتحط نقطة بإسم تلقائي (A, B, C…). النقطة بتلتصق بالشبكة إذا زر 🧲 شغّال.','point'];
 DEMOS.segment=[c=>c.sw('segment',[[-4,-2],[3,2]]),'ضغطتين = قطعة مستقيمة بين نقطتين. اسحب أي طرف وشوف القطعة بتتبعه.'];
-DEMOS.line=[c=>c.sw('line',[[-4,-2],[2,1]]),'ضغطتين = مستقيم بيمر بالنقطتين وبيكمل للنهاية بالاتجاهين.'];
+DEMOS.line=[c=>c.sw('line',[[-4,-2],[2,1]]),'ضغطتين = مستقيم بيمر بالنقطتين وبيمتد لحد حدود اللوحة بالاتجاهين (مش لانهائي).'];
 DEMOS.tri=[c=>c.sw('tri',TRI),'3 ضغطات = مثلث. اسحب أي رأس وشوف المثلث كيف بيتغيّر.'];
 DEMOS.circle=[c=>c.sw('circle',[[0,0],[3,0]]),'الضغطة الأولى المركز والثانية نقطة على الدائرة. اسحب النقطة الثانية لتكبّر الدائرة أو تصغّرها.'];
 DEMOS.sector=[c=>c.sw('sector',[[0,0],[3,0],[0,3]]),'المركز، ثم بداية القوس، ثم نهايته (عكس عقارب الساعة). بيطلع نق والزاوية وطول القوس والمساحة. جرّب ✎ قيمة / اسم واضغط عليه لتحدد زاوية دقيقة.'];
@@ -5955,9 +5971,9 @@ function saBuild(){
     SA.O=p;
   }
   const O=SA.O,E=hp(()=>1,()=>0),T=hp(()=>Math.cos(SA.th),()=>Math.sin(SA.th));
-  const sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:true};
+  const sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:false};
   /* ضلعا الزاوية قطع محدودة (مش أشعة لانهائية): الطول بيتبع حجم الشاشة */
-  const SL=()=>{const b=board.getBoundingBox();return Math.max(1.5,.9*Math.min(b[2]-b[0],b[1]-b[3])/2)};
+  const SL=()=>{const b=board.getBoundingBox();return Math.max(1.5,.85*Math.min(b[2]-b[0],b[1]-b[3])/2)};
   const E2=hp(()=>SL(),()=>0),T2=hp(()=>Math.cos(SA.th)*SL(),()=>Math.sin(SA.th)*SL());
   const r0=board.create('segment',[O,E2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
   const r1=board.create('segment',[O,T2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
@@ -6111,14 +6127,17 @@ function toggleAxes(){
   say(['المحاور مخفية','المحاور بأرقام','المحاور بدون أرقام (x و y بس)'][axMode]);
 }
 function bbox(){const w=bd.clientWidth||400,h=bd.clientHeight||320,r=w/h;return[-6*r,6,6*r,-6]}
+/* حدود العالم: أكبر قليلاً من العرض الأول، ما بتقدر تتحرك أو تصغّر برا منها */
+function worldBB(){const b=bbox();return b.map(v=>v*1.4)}
 function resetView(){if(!board)return;safe(()=>board.setBoundingBox(bbox(),true))}
-function fit(){if(!board)return;const w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20)safe(()=>{board.resizeContainer(w,h,true);board.update()})}
+function fit(){if(!board)return;const w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20)safe(()=>{board.resizeContainer(w,h,true);WB=worldBB();board.attr.maxboundingbox=WB;board.update()})}
 if(window.ResizeObserver)new ResizeObserver(()=>fit()).observe(bd);
 
 function build(){
   if(window.JXG.Options){const o=window.JXG.Options;if(o.text)o.text.display='internal';if(o.label)o.label.display='internal'}
   bd.textContent='';
-  board=JXG.JSXGraph.initBoard('geoBoard',{boundingbox:bbox(),axis:false,grid:false,showCopyright:false,showNavigation:false,showZoom:false,showReload:false,showScreenshot:false,showFullscreen:false,showClearTraces:false,showInfobox:false,keepAspectRatio:true,pan:{enabled:true,needTwoFingers:true},zoom:{factorX:1.25,factorY:1.25,wheel:true,needShift:false,pinch:true,min:.15,max:12}});
+  WB=worldBB();
+  board=JXG.JSXGraph.initBoard('geoBoard',{boundingbox:bbox(),maxBoundingBox:WB,axis:false,grid:false,showCopyright:false,showNavigation:false,showZoom:false,showReload:false,showScreenshot:false,showFullscreen:false,showClearTraces:false,showInfobox:false,keepAspectRatio:true,pan:{enabled:true,needTwoFingers:true},zoom:{factorX:1.25,factorY:1.25,wheel:true,needShift:false,pinch:true,min:.7,max:8}});
   addGrid();
   /* حماية: لو المقياس صار جنوني (محور x بيروح للانهاية) بنرجع لآخر عرض سليم تلقائياً */
   (function(){
@@ -6200,8 +6219,9 @@ var $=function(i){return document.getElementById(i)};
 var bd=$('board'),inf=$('info'),bar=$('bar'),J=window.JXG;
 if(!J||!J.JSXGraph){bd.innerHTML='<p style="padding:16px;direction:rtl;color:#1c2433">ما انحمّلت مكتبة الرسم. لازم اتصال بالنت لهالملف.</p>';return}
 if(J.Options){if(J.Options.text)J.Options.text.display='internal';if(J.Options.label)J.Options.label.display='internal'}
+var WB=M.wb||(function(){var b=M.bb,cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2,hx=(b[2]-b[0])*.7,hy=(b[1]-b[3])*.7;return[cx-hx,cy+hy,cx+hx,cy-hy]})();
 var snap=!!M.snap,P=[],P0=[],H={},O=[],SEC=[],grid=null,axes=null,COL='#1d4ed8',RS=[],HDL=[],SAV=null;
-var board=J.JSXGraph.initBoard('board',{boundingbox:M.bb,axis:false,grid:false,showCopyright:false,showNavigation:false,showZoom:false,showReload:false,showScreenshot:false,showFullscreen:false,showClearTraces:false,showInfobox:false,keepAspectRatio:true,pan:{enabled:true,needTwoFingers:true},zoom:{factorX:1.25,factorY:1.25,wheel:true,needShift:false,pinch:true,min:.15,max:12}});
+var board=J.JSXGraph.initBoard('board',{boundingbox:M.bb,maxBoundingBox:WB,axis:false,grid:false,showCopyright:false,showNavigation:false,showZoom:false,showReload:false,showScreenshot:false,showFullscreen:false,showClearTraces:false,showInfobox:false,keepAspectRatio:true,pan:{enabled:true,needTwoFingers:true},zoom:{factorX:1.25,factorY:1.25,wheel:true,needShift:false,pinch:true,min:.7,max:8}});
 var f1=function(n){var s=n.toFixed(1);return s.slice(-2)==='.0'?s.slice(0,-2):s};
 var f2=function(n){return String(Number(n.toFixed(2)))};
 function txt(x,y,c,e){return board.create('text',[x,y,c],Object.assign({display:'internal',fontSize:15,fixed:true,highlight:false,strokeColor:'#1c2433',anchorX:'left',anchorY:'bottom',withLabel:false},e||{}))}
@@ -6267,7 +6287,7 @@ function plainAx(){
 function addSang(it){
   var TAU=2*Math.PI,lim=10*TAU,th=Number(it.th)||0,th0=th,hr=it.hr>0?it.hr:3,showLb=it.lb!==0,busy=false,inp=null;
   var o0=hpt(function(){return 0},function(){return 0}),e1=hpt(function(){return 1},function(){return 0}),t1=hpt(function(){return Math.cos(th)},function(){return Math.sin(th)});
-  var sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:true};
+  var sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:false};
   var SL=function(){var b=board.getBoundingBox();return Math.max(1.5,.9*Math.min(b[2]-b[0],b[1]-b[3])/2)};
   var e2=hpt(function(){return SL()},function(){return 0}),t2=hpt(function(){return Math.cos(th)*SL()},function(){return Math.sin(th)*SL()});
   board.create('segment',[o0,e2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
@@ -6366,18 +6386,31 @@ function addLen(it){
   txt(function(){return (A.X()+B.X())/2},function(){return (A.Y()+B.Y())/2+.15},function(){return ov!=null?ov:f2(Math.hypot(A.X()-B.X(),A.Y()-B.Y()))},{strokeColor:'#0369a1',anchorX:'middle',anchorY:'bottom',fontSize:16});
   O.push({deps:[A,B]});
 }
+function clipLn(px,py,dx,dy,ray){
+  var t0=ray?0:-1e9,t1=1e9,c=[[-dx,px-WB[0]],[dx,WB[2]-px],[-dy,py-WB[3]],[dy,WB[1]-py]];
+  for(var i=0;i<4;i++){var p=c[i][0],q=c[i][1];
+    if(Math.abs(p)<1e-12){if(q<0)return null}
+    else{var r=q/p;if(p<0){if(r>t0)t0=r}else{if(r<t1)t1=r}}}
+  return t0>t1?null:[px+t0*dx,py+t0*dy,px+t1*dx,py+t1*dy];
+}
+function ext(P,Q,ray,o){
+  var g=function(){var dx=Q.X()-P.X(),dy=Q.Y()-P.Y();return Math.hypot(dx,dy)>1e-12?clipLn(P.X(),P.Y(),dx,dy,ray):null};
+  var mk=function(k){return hpt(function(){var r=g();return r?r[k]:NaN},function(){var r=g();return r?r[k+1]:NaN})};
+  var o2={};for(var k in o)o2[k]=o[k];o2.straightFirst=false;o2.straightLast=false;
+  return board.create('segment',[mk(0),mk(2)],o2);
+}
 function hpt(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})}
 function lst(){return {strokeColor:'#0d9488',strokeWidth:2,highlightStrokeColor:'#0d9488',straightFirst:true,straightLast:true,withLabel:false}}
 function addPerp(it,i,par){
   var Pp=P[it.d[0]],A=P[it.d[1]],B=P[it.d[2]];
   var Q=par?hpt(function(){return Pp.X()+B.X()-A.X()},function(){return Pp.Y()+B.Y()-A.Y()}):hpt(function(){return Pp.X()-(B.Y()-A.Y())},function(){return Pp.Y()+(B.X()-A.X())});
-  H[i]=board.create('line',[Pp,Q],lst());O.push({deps:[Pp,A,B]});
+  H[i]=ext(Pp,Q,false,lst());O.push({deps:[Pp,A,B]});
 }
 function addPbis(it,i){
   var A=P[it.d[0]],B=P[it.d[1]];
   var m=board.create('point',[function(){return (A.X()+B.X())/2},function(){return (A.Y()+B.Y())/2}],{size:3,fixed:true,withLabel:false,name:'',showInfobox:false,strokeColor:'#0d9488',fillColor:'#0d9488',highlight:false});
   var Q=hpt(function(){return m.X()-(B.Y()-A.Y())},function(){return m.Y()+(B.X()-A.X())});
-  H[i]=board.create('line',[m,Q],lst());O.push({deps:[A,B]});
+  H[i]=ext(m,Q,false,lst());O.push({deps:[A,B]});
 }
 function addAbis(it){
   var A=P[it.d[0]],V=P[it.d[1]],C=P[it.d[2]];
@@ -6385,7 +6418,7 @@ function addAbis(it){
     var ux=(A.X()-V.X())/a,uy=(A.Y()-V.Y())/a,vx=(C.X()-V.X())/c,vy=(C.Y()-V.Y())/c,sx=ux+vx,sy=uy+vy;
     return Math.hypot(sx,sy)<1e-9?[-uy,ux]:[sx,sy]};
   var Q=hpt(function(){return V.X()+dir()[0]},function(){return V.Y()+dir()[1]});
-  var o=lst();o.straightFirst=false;board.create('line',[V,Q],o);O.push({deps:[A,V,C]});
+  ext(V,Q,true,lst());O.push({deps:[A,V,C]});
 }
 function addTan(it){
   var Pp=P[it.d[0]],Oo=P[it.d[1]],A=P[it.d[2]],sg=it.tm||0;
@@ -6396,7 +6429,7 @@ function addTan(it){
   var T1=mk(1),T2=mk(-1),st=function(sgn){return {strokeColor:'#0d9488',strokeWidth:2,highlightStrokeColor:'#0d9488',withLabel:false,visible:sg===0||sg===sgn}};
   board.create('segment',[Pp,T1],st(1));board.create('segment',[Pp,T2],st(-1));
   var Q0=hpt(function(){return onC()?Pp.X()-(Pp.Y()-Oo.Y()):NaN},function(){return onC()?Pp.Y()+(Pp.X()-Oo.X()):NaN});
-  board.create('line',[Pp,Q0],lst());
+  ext(Pp,Q0,false,lst());
   O.push({deps:[Pp,Oo,A]});
 }
 function addDv(it){
@@ -6431,7 +6464,7 @@ M.items.forEach(function(it,i){
     if(k==='p')addPoint(it);
     else if(k==='m')addMid(it);
     else if(k==='seg'){H[i]=board.create('segment',[V[0],V[1]],{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,withLabel:false});O.push({deps:V})}
-    else if(k==='line'){H[i]=board.create('line',[V[0],V[1]],{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,straightFirst:true,straightLast:true,withLabel:false});O.push({deps:V})}
+    else if(k==='line'){H[i]=ext(V[0],V[1],false,{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,withLabel:false});O.push({deps:V})}
     else if(k==='tri'){board.create('polygon',V,{fillColor:'#3b82f6',fillOpacity:.12,highlightFillColor:'#3b82f6',highlightFillOpacity:.12,withLabel:false,borders:{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,withLabel:false}});O.push({deps:V})}
     else if(k==='circ'){H[i]=board.create('circle',[V[0],V[1]],{strokeColor:COL,strokeWidth:2,highlightStrokeColor:COL,fillColor:'#3b82f6',fillOpacity:.06,highlightFillColor:'#3b82f6',highlightFillOpacity:.06,withLabel:false});O.push({deps:V})}
     else if(k==='sec')addSector(it,i);
@@ -6547,7 +6580,7 @@ function buildModel(){
   let bb=board.getBoundingBox();
   /* مع الزاوية بنخلي العرض زي ما هو (المحاور على كامل الشاشة) عشان ضلع الانتهاء يلف براحته */
   if(!hasSang)try{const cb=contentBB();if(cb){const m=Math.max(cb[2]-cb[0],cb[1]-cb[3])*.12+.5;bb=[cb[0]-m,cb[1]+m,cb[2]+m,cb[3]-m]}}catch(e){}
-  return {bb:bb,grid:!!gridObj,axes:!!axes,axm:axMode,snap:snap,items:items};
+  return {bb:bb,wb:WB,grid:!!gridObj,axes:!!axes,axm:axMode,snap:snap,items:items};
 }
 /* بيبني صفحة HTML تفاعلية كاملة من نموذج الرسم (للتصدير ولفتح الرسم الحي من الدفتر) */
 async function liveHtml(model){
