@@ -5228,7 +5228,7 @@ const TOOLS=[
   ['col','🎨','لون','اختار اللون (والسماكة إذا بدك) من الشريط، وبعدين اضغط على النقطة أو الشكل اللي بدك تلوّنه.'],
   ['stick','📎','ألصق بشكل','اضغط على نقطة، وبعدين اضغط على الشكل (دائرة، قطعة، مستقيم، مثلث، قطاع). بعدها النقطة بتتحرك عليه بس بالسحب.'],
   ['unstick','⛓','إلغاء اللصق','اضغط على نقطة ملصوقة بشكل عشان تتحرر وترجع نقطة حرة.'],
-  ['edit','✎','قيمة / اسم','اضغط على زاوية أو طول، واكتب رقم (40) أو اسم مجهول (x) أو الاثنين (x=40). فاضي = يرجع تلقائي.'],
+  ['edit','✎','قيمة / اسم','اضغط على زاوية (حتى زاوية الوضع القياسي) أو طول، واكتب رقم (40) أو اسم مجهول (x) أو الاثنين (x=40). فاضي = يرجع تلقائي.'],
   ['del','🗑','حذف','اضغط على أي عنصر لحذفه.']
 ];
 const NEED={segment:2,line:2,tri:3,circle:2,sector:3,angle:3,len:2,mid:2,pbis:2,abis:3,rpoly:2};
@@ -5850,7 +5850,14 @@ const hintOf=t=>(TOOLS.find(x=>x[0]===t)||[])[3]||'';
 (function wire(){
   const ptrs=new Set();let g=null;
   const rel=ev=>{const r=bd.getBoundingClientRect(),kx=r.width?bd.offsetWidth/r.width:1,ky=r.height?bd.offsetHeight/r.height:1;return[(ev.clientX-r.left)*kx,(ev.clientY-r.top)*ky]};
-  bd.addEventListener('pointerdown',ev=>{ptrs.add(ev.pointerId);if(ptrs.size===1)g={x:ev.clientX,y:ev.clientY,ok:true};else if(g)g.ok=false},true);
+  /* لو ضاع pointerup (مثلاً الدفتر انغلق وقت الضغط) بتضل مؤشرات «عالقة» وما بترسم الأدوات بعدها: نفضّيها */
+  const flush=()=>{ptrs.clear();g=null};
+  (window.__GEO_RESET=window.__GEO_RESET||[]).push(flush);
+  const lose=ev=>{ptrs.delete(ev.pointerId);if(!ptrs.size)g=null};
+  window.addEventListener('pointerup',lose);window.addEventListener('pointercancel',lose);
+  window.addEventListener('blur',flush);
+  document.addEventListener('visibilitychange',flush);
+  bd.addEventListener('pointerdown',ev=>{if(ev.isPrimary)ptrs.clear();ptrs.add(ev.pointerId);if(ptrs.size===1)g={x:ev.clientX,y:ev.clientY,ok:true};else if(g)g.ok=false},true);
   bd.addEventListener('pointermove',ev=>{if(g&&g.ok&&Math.hypot(ev.clientX-g.x,ev.clientY-g.y)>8)g.ok=false},true);
   const end=ev=>{
     const was=ptrs.size;ptrs.delete(ev.pointerId);
@@ -5909,7 +5916,7 @@ const bIn=abtn('📌 أدرج بالصفحة','بيحط الرسم كصورة ب
 abtn('🌐 صدّر تفاعلي','بيصدّر الرسم كملف HTML تفاعلي (اسحب النقاط والقياسات بتتحدّث)',()=>exportLive());
 bSn.classList.add('on');bGr.classList.add('on');
 /* ---------- زاوية بالوضع القياسي: الرأس نقطة الأصل، والضلع الابتدائي على محور x الموجب ---------- */
-const SA={th:0,n:3,show:true,O:null,g:null,arc:null,lb:null,inp:null,nIn:null,bShow:null,rnd:[],L:null};
+const SA={nm:'',eq:false,th:0,n:3,show:true,O:null,g:null,arc:null,lb:null,inp:null,nIn:null,bShow:null,rnd:[],L:null};
 const TAU=2*Math.PI;
 const saRnd=()=>{SA.rnd=Array.from({length:64},()=>Math.random())};saRnd();
 function saParse(raw){
@@ -5956,13 +5963,21 @@ function saBuild(){
   const r1=board.create('segment',[O,T2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
   const R=s=>1+.25*Math.abs(SA.th)/TAU*s;
   const arc=board.create('curve',[s=>R(s)*Math.cos(s*SA.th),s=>R(s)*Math.sin(s*SA.th),0,1],{strokeColor:'#d97706',strokeWidth:2.2,highlight:false,fixed:true,withLabel:false,numberPoints:600,lastArrow:{type:1,size:3.5}});
-  const lt=()=>fmt1(SA.th*180/Math.PI)+'°';
+  const lt=()=>{const d=fmt1(SA.th*180/Math.PI)+'°';return SA.nm?(SA.eq?SA.nm+' = '+d:SA.nm):d};
   const pos=()=>{const th=SA.th,e=((th%TAU)+TAU)%TAU;let a0,t;
     if(th>=0){a0=0;t=e||TAU}else{const ne=e===0?-TAU:e-TAU;a0=ne;t=-ne}
     return angPos(0,0,a0,t,1+.25*Math.abs(th)/TAU,lt().length)};
   const lb=txt(()=>pos()[0],()=>pos()[1],lt,{strokeColor:'#b45309',anchorX:'middle',anchorY:'middle',fontSize:16});
   SA.arc=arc;SA.lb=lb;
-  SA.g=reg({t:'sang',grp:'sang',kind:'o',els:[r0,r1,arc,lb,E,T,E2,T2],deps:[O],col:'#1d4ed8',hl:[r1,r0],hit:(x,y)=>safe(()=>r1.hasPoint(x,y)||r0.hasPoint(x,y)||arc.hasPoint(x,y))});
+  SA.g=reg({t:'sang',grp:'sang',kind:'o',els:[r0,r1,arc,lb,E,T,E2,T2],deps:[O],col:'#1d4ed8',hl:[r1,r0],hit:(x,y)=>safe(()=>r1.hasPoint(x,y)||r0.hasPoint(x,y)||arc.hasPoint(x,y)||lb.hasPoint(x,y)),
+    edit(str){const r=parseEdit(str);
+      if(r.val!==undefined){
+        if(Math.abs(r.val)>10*360)return 'الزاوية كبيرة كثير، الحد الأقصى 3600°';
+        SA.th=r.val*Math.PI/180;if(SA.inp)SA.inp.value=String(r.val);saSync();
+      }
+      SA.nm=r.name||'';SA.eq=!!(r.name&&r.val!==undefined);
+      if(r.name)saShow(true);else saShow();
+      return ''}});
   if(axMode===0)setAxMode(2); /* المحاور x و y بتظهر تلقائياً مع الزاوية */
 }
 /* توزيع النقاط على ضلع النهاية: بأعداد صحيحة لما يكون الميل نسبة صحيحة، وإلا إحداثي صحيح والثاني تقريبي */
@@ -6055,7 +6070,7 @@ function saPanel(){
   const r3=row();
   const bGo=mkb('✔ ارسم',()=>saApply('go'),'primary'),bDice=mkb('🎲 نقاط جديدة',()=>saApply('dice'));
   const bSh=mkb('👁 إخفاء قياس الزاوية',()=>{saShow(!SA.show);board&&board.update();say(SA.show?'قياس الزاوية ظاهر':'قياس الزاوية مخفي (القوس والنقاط بيضلوا ظاهرين)')});
-  const bDel=mkb('🗑 احذف الزاوية',()=>{const l=acts.filter(a=>a.grp==='sang'||a.grp==='sang-p');if(!l.length){say('ما في زاوية مرسومة');return}kill(l);board.update();say('انحذفت الزاوية ونقاطها (نقطة الأصل O بتضل)')});
+  const bDel=mkb('🗑 احذف الزاوية',()=>{SA.nm='';SA.eq=false;const l=acts.filter(a=>a.grp==='sang'||a.grp==='sang-p');if(!l.length){say('ما في زاوية مرسومة');return}kill(l);board.update();say('انحذفت الزاوية ونقاطها (نقطة الأصل O بتضل)')});
   bDel.classList.add('danger');SA.bShow=bSh;
   r3.append(bGo,bDice,bSh,bDel);
   const hint=document.createElement('div');hint.className='st';hint.style.margin='0';
@@ -6259,7 +6274,7 @@ function addSang(it){
   board.create('segment',[o0,t2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
   var R=function(s){return 1+.25*Math.abs(th)/TAU*s};
   var arc=board.create('curve',[function(s){return R(s)*Math.cos(s*th)},function(s){return R(s)*Math.sin(s*th)},0,1],{strokeColor:'#d97706',strokeWidth:2.2,highlight:false,fixed:true,withLabel:false,numberPoints:600,lastArrow:{type:1,size:3.5}});
-  var lt=function(){return f1(th*180/Math.PI)+'°'};
+  var lt=function(){var d=f1(th*180/Math.PI)+'°';return it.nm?(it.eq?it.nm+' = '+d:it.nm):d};
   var pos=function(){var e=((th%TAU)+TAU)%TAU,a0,t;
     if(th>=0){a0=0;t=e||TAU}else{var ne=e===0?-TAU:e-TAU;a0=ne;t=-ne}
     return angPos(0,0,a0,t,1+.25*Math.abs(th)/TAU,lt().length)};
@@ -6517,7 +6532,7 @@ function buildModel(){
       if(a.t==='sang'){
         /* زاوية بالوضع القياسي: بتنحفظ كعنصر لحالها (الرأس O، ضلع ابتداء ثابت، ضلع انتهاء بيتحرك). hr = بعد مقبض السحب عن O */
         const b0=board.getBoundingBox(),ex=[-b0[0],b0[2],b0[1],-b0[3]].filter(v=>v>0.5),hr=ex.length===4?Math.max(1.5,.72*Math.min.apply(null,ex)):3;
-        items.push({k:'sang',th:SA.th,hr:Math.round(hr*100)/100,lb:SA.show?1:0});
+        items.push({k:'sang',th:SA.th,hr:Math.round(hr*100)/100,lb:SA.show?1:0,nm:SA.nm||'',eq:SA.eq?1:0});
       }
       else if(a.t==='point'){const p=a.els[0];items.push({k:'p',n:p.name||'',x:p.X(),y:p.Y()})}
       else if(a.t==='mid'){const m=a.els[0];items.push({k:'m',n:m.name||'',d:a.deps.map(q=>pid.get(q))})}
@@ -6669,6 +6684,7 @@ function doInsert(){
     gh.style.left=e.clientX+'px';gh.style.top=e.clientY+'px';document.body.append(gh);e.preventDefault();return true;
   };
   const move=e=>{if(on&&gh){gh.style.left=e.clientX+'px';gh.style.top=e.clientY+'px'}};
+  (window.__GEO_RESET=window.__GEO_RESET||[]).push(()=>{on=false;if(gh){gh.remove();gh=null}});
   const done=e=>{
     if(!on)return;on=false;if(gh){gh.remove();gh=null}
     if(e.type!=='pointerup')return;
@@ -6686,12 +6702,15 @@ function doInsert(){
 })();
 
 /* ---------- التبويبات ---------- */
-function leave(){geo.hidden=true;tgeo.classList.remove('on')}
+const resetGest=()=>{(window.__GEO_RESET||[]).forEach(f=>{try{f()}catch(e){}})};
+function leave(){resetGest();geo.hidden=true;tgeo.classList.remove('on')}
 tc.addEventListener('click',leave);tg.addEventListener('click',leave);
 tgeo.addEventListener('click',()=>{
   cc.hidden=true;gg.hidden=true;geo.hidden=false;
   tc.classList.remove('on');tg.classList.remove('on');tgeo.classList.add('on');
-  ensure();
+  resetGest();ensure();
+  /* بعد الرجوع: نعيد ضبط الأداة الحالية والحجم عشان الرسم يشتغل طبيعي */
+  setTimeout(()=>{try{if(board){fit();setTool(tool);board.update()}}catch(e){}},60);
 });
 /* لو أي كود ثاني رجّع الحاسبة العادية لأي سبب، بنسكّر الهندسة */
 new MutationObserver(()=>{if(!cc.hidden&&!geo.hidden){leave();tc.classList.add('on')}}).observe(cc,{attributes:true,attributeFilter:['hidden']});
