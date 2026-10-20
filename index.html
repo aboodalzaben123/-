@@ -5194,7 +5194,7 @@ function loadJXG(){
 }
 
 /* ---------- حالة الأداة ---------- */
-let edBox=null,board=null,tool='move',buf=[],acts=[],pts=[],pcount=0,snap=true,gridObj=null,axes=null,WB=[-12,8,12,-8];
+let edBox=null,board=null,tool='move',buf=[],acts=[],pts=[],pcount=0,snap=true,gridObj=null,axes=null,WB=[-12,8,12,-8],AXH=null;
 const say=m=>{st.textContent=m||''};
 const toast=m=>{say(m);const t=$('toast');if(!t)return;t.textContent=m;t.style.opacity=1;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.opacity=0},2600)};
 const safe=f=>{try{return f()}catch(e){return false}};
@@ -5410,6 +5410,8 @@ const MAKE={
 
 /* ---------- إنشاءات هندسية: عمودي، موازي، منصّفات، مماس، مضلعات ---------- */
 const TC='#0d9488';let grpN=0,nSel=null,namesOff=false,curCol='#dc2626',curW='',curO=.35;
+/* نص طول المحورين: نفس الطول لـ x و y (بالوحدات)، ما بيتغير بالتكبير */
+function axh(){if(AXH==null){const b=board.getBoundingBox();AXH=Math.min(.42*(b[2]-b[0]),.46*(b[1]-b[3]))}return AXH}
 function hp(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})}
 /* مستقيم/شعاع بدون لانهاية: قطعة بتنقصّ على حدود لوحة الرسم المحدودة (WB) */
 function clipLn(px,py,dx,dy,ray){
@@ -5973,7 +5975,7 @@ function saBuild(){
   const O=SA.O,E=hp(()=>1,()=>0),T=hp(()=>Math.cos(SA.th),()=>Math.sin(SA.th));
   const sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:false};
   /* ضلعا الزاوية قطع محدودة (مش أشعة لانهائية): الطول بيتبع حجم الشاشة */
-  const SL=()=>{const b=board.getBoundingBox();return Math.max(1.5,.85*Math.min(b[2]-b[0],b[1]-b[3])/2)};
+  const SL=()=>.75*axh(); /* ضلع الانتهاء أقصر من المحور وطوله ثابت */
   const E2=hp(()=>SL(),()=>0),T2=hp(()=>Math.cos(SA.th)*SL(),()=>Math.sin(SA.th)*SL());
   const r0=board.create('segment',[O,E2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
   const r1=board.create('segment',[O,T2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
@@ -6045,6 +6047,13 @@ function saShow(on){
   if(SA.bShow)SA.bShow.textContent=SA.show?'👁 إخفاء قياس الزاوية':'👁 إظهار قياس الزاوية';
 }
 function saApply(src){
+  try{saApply0(src)}catch(e){
+    /* لو صار خطأ ما بنخلي الرسمة تضيع بصمت: بنعرض الخطأ وبنرجّع الزاوية لو انحذفت */
+    try{if(!(SA.g&&acts.includes(SA.g)&&saOk()))saBuild();saSync();saShow();board.update()}catch(_){}
+    say('صار خطأ بنقاط الزاوية: '+(e&&e.message?e.message:e));
+  }
+}
+function saApply0(src){
   if(!board||!SA.inp)return;
   const v=saParse(SA.inp.value);
   if(v===null){if(src!=='input'&&src!=='n')say(SA.inp.value.trim()?'ما فهمت الزاوية. أمثلة: 150 أو -45 أو 400 أو π/3 أو 2π/3':'اكتب الزاوية أول');return}
@@ -6104,13 +6113,12 @@ let axMode=0; /* 0 مخفية، 1 بأرقام، 2 بدون أرقام (x و y �
 function plainAxes(){
   const sty=()=>({strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}});
   /* المحاور قطع مستقيمة محدودة من حافة الشاشة للحافة (مش مستقيمات لانهائية) */
-  const bb0=()=>board.getBoundingBox(),mg=()=>4/(board.unitX||30);
   const P=(fx,fy)=>board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1});
-  const ax=board.create('segment',[P(()=>bb0()[0]+.08*(bb0()[2]-bb0()[0]),()=>0),P(()=>bb0()[2]-.08*(bb0()[2]-bb0()[0]),()=>0)],sty());
-  const ay=board.create('segment',[P(()=>0,()=>bb0()[3]+mg()),P(()=>0,()=>bb0()[1]-mg())],sty());
-  const bb=()=>board.getBoundingBox(),ux=()=>board.unitX||30,uy=()=>board.unitY||30;
-  const lx=txt(()=>bb()[2]-.08*(bb()[2]-bb()[0])-4/ux(),()=>7/uy(),'x',{anchorX:'right',anchorY:'bottom',fontSize:19,strokeColor:'#1c2433'});
-  const ly=txt(()=>9/ux(),()=>bb()[1]-8/uy(),'y',{anchorX:'left',anchorY:'top',fontSize:19,strokeColor:'#1c2433'});
+  const ax=board.create('segment',[P(()=>-axh(),()=>0),P(()=>axh(),()=>0)],sty());
+  const ay=board.create('segment',[P(()=>0,()=>-axh()),P(()=>0,()=>axh())],sty());
+  const ux=()=>board.unitX||30,uy=()=>board.unitY||30;
+  const lx=txt(()=>axh()-4/ux(),()=>7/uy(),'x',{anchorX:'right',anchorY:'bottom',fontSize:19,strokeColor:'#1c2433'});
+  const ly=txt(()=>9/ux(),()=>axh()-8/uy(),'y',{anchorX:'left',anchorY:'top',fontSize:19,strokeColor:'#1c2433'});
   return [ax,ay,lx,ly];
 }
 function setAxMode(m){
@@ -6130,7 +6138,7 @@ function bbox(){const w=bd.clientWidth||400,h=bd.clientHeight||320,r=w/h;return[
 /* حدود العالم: أكبر قليلاً من العرض الأول، ما بتقدر تتحرك أو تصغّر برا منها */
 function worldBB(){const b=bbox();return b.map(v=>v*1.4)}
 function resetView(){if(!board)return;safe(()=>board.setBoundingBox(bbox(),true))}
-function fit(){if(!board)return;const w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20)safe(()=>{board.resizeContainer(w,h,true);WB=worldBB();board.attr.maxboundingbox=WB;board.update()})}
+function fit(){if(!board)return;const w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20)safe(()=>{board.resizeContainer(w,h,true);AXH=null;WB=worldBB();board.attr.maxboundingbox=WB;board.update()})}
 if(window.ResizeObserver)new ResizeObserver(()=>fit()).observe(bd);
 
 function build(){
@@ -6271,6 +6279,15 @@ function saParse(raw){
   return rad?v:v*Math.PI/180;
 }
 function plainAx(){
+  /* طول موحّد للمحورين (نفس اللوحة الأصلية) */
+  if(M.ah>0){
+    var A=M.ah,st=function(){return {strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}}};
+    var Pp=function(x,y){return board.create('point',[x,y],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})};
+    var ax0=board.create('segment',[Pp(-A,0),Pp(A,0)],st()),ay0=board.create('segment',[Pp(0,-A),Pp(0,A)],st());
+    var lx0=txt(function(){return A-4/(board.unitX||30)},function(){return 7/(board.unitY||30)},'x',{anchorX:'right',anchorY:'bottom',fontSize:19});
+    var ly0=txt(function(){return 9/(board.unitX||30)},function(){return A-8/(board.unitY||30)},'y',{anchorX:'left',anchorY:'top',fontSize:19});
+    return [ax0,ay0,lx0,ly0];
+  }
   var sty=function(){return {strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}}};
   var cr=(M.core&&M.core.length===4)?M.core:null;
   /* بالعرض الحي المصغّر: المحاور بتنتهي عند حدود الرسم الأصلية (مع الأسهم) مثل الصورة، مش لحد طرف الإطار */
@@ -6288,7 +6305,7 @@ function addSang(it){
   var TAU=2*Math.PI,lim=10*TAU,th=Number(it.th)||0,th0=th,hr=it.hr>0?it.hr:3,showLb=it.lb!==0,busy=false,inp=null;
   var o0=hpt(function(){return 0},function(){return 0}),e1=hpt(function(){return 1},function(){return 0}),t1=hpt(function(){return Math.cos(th)},function(){return Math.sin(th)});
   var sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:false};
-  var SL=function(){var b=board.getBoundingBox();return Math.max(1.5,.9*Math.min(b[2]-b[0],b[1]-b[3])/2)};
+  var SL0=M.ah>0?.75*M.ah:(function(){var b=board.getBoundingBox();return Math.max(1.5,.85*Math.min(b[2]-b[0],b[1]-b[3])/2)})(),SL=function(){return SL0};
   var e2=hpt(function(){return SL()},function(){return 0}),t2=hpt(function(){return Math.cos(th)*SL()},function(){return Math.sin(th)*SL()});
   board.create('segment',[o0,e2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
   board.create('segment',[o0,t2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
@@ -6580,7 +6597,7 @@ function buildModel(){
   let bb=board.getBoundingBox();
   /* مع الزاوية بنخلي العرض زي ما هو (المحاور على كامل الشاشة) عشان ضلع الانتهاء يلف براحته */
   if(!hasSang)try{const cb=contentBB();if(cb){const m=Math.max(cb[2]-cb[0],cb[1]-cb[3])*.12+.5;bb=[cb[0]-m,cb[1]+m,cb[2]+m,cb[3]-m]}}catch(e){}
-  return {bb:bb,wb:WB,grid:!!gridObj,axes:!!axes,axm:axMode,snap:snap,items:items};
+  return {bb:bb,wb:WB,ah:axh(),grid:!!gridObj,axes:!!axes,axm:axMode,snap:snap,items:items};
 }
 /* بيبني صفحة HTML تفاعلية كاملة من نموذج الرسم (للتصدير ولفتح الرسم الحي من الدفتر) */
 async function liveHtml(model){
