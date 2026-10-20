@@ -4022,8 +4022,9 @@ function gLive(d,ask){
     }
     const st=o.fr.style;st.left=(it.x-GE*it.w)*B+'px';st.top=(it.y-GE*it.h)*B+'px';st.width=it.w*(1+2*GE)*B+'px';st.height=it.h*(1+2*GE)*B+'px';
     st.transform=it.rot?'rotate('+it.rot+'rad)':'';
-    /* الإطار الحي أكبر من الصورة (هامش GE)، فلو شكلين فوق بعض كان الأخير بيغطّي الأول ويسرق اللمس. القص بيحصر الإطار على الصورة + هامش 48px على الأكثر (عشان الشكل لما تسحبه برا الصورة ما يختفي) */
-    const mxp=GE*it.w*B,myp=GE*it.h*B,mg=Math.min(48,mxp,myp),cp='inset('+(myp-mg)+'px '+(mxp-mg)+'px)';st.clipPath=cp;st.webkitClipPath=cp;
+    /* القص بيتفعّل بس لو في شكل حي ثاني بيتداخل مع هالإطار (عشان ما يسرق اللمس منه). لو لحاله ما في قص أبداً */
+    const ov=want.some(q=>q!==it&&!(q.x>=it.x+it.w*(1+GE)||q.x+q.w<=it.x-GE*it.w||q.y>=it.y+it.h*(1+GE)||q.y+q.h<=it.y-GE*it.h));
+    const mxp=GE*it.w*B,myp=GE*it.h*B,mg=Math.min(48,mxp,myp),cp=ov?'inset('+(myp-mg)+'px '+(mxp-mg)+'px)':'none';st.clipPath=cp;st.webkitClipPath=cp;
   });
   return ch}
 window.addEventListener('message',e=>{if(!e.data||e.data.t!=='geo-dirty')return;DOM.forEach(d=>{if(d.gl)d.gl.forEach(o=>{if(o.fr.contentWindow===e.source)o.dirty=!!e.data.dirty})})});
@@ -6528,7 +6529,10 @@ if(M.compact){var ini=P.map(function(p){return p&&p.X?[p.X(),p.Y()]:null}),sa0=S
 function clipCore(){var c=M.core;if(!M.compact||!c||c.length!==4||!(M.items&&M.items.some(function(q){return q.k==='sang'})))return;try{var w=bd.clientWidth,h=bd.clientHeight,og=board.origin.scrCoords,ux=board.unitX,uy=board.unitY;
   var l=Math.max(0,og[1]+c[0]*ux),r=Math.min(w,og[1]+c[2]*ux),t=Math.max(0,og[2]-c[1]*uy),b=Math.min(h,og[2]-c[3]*uy);
   if(r-l>10&&b-t>10)bd.style.clipPath='inset('+t+'px '+(w-r)+'px '+(h-b)+'px '+l+'px)'}catch(e){}}
-function fit(){var w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20){try{var vb=board.getBoundingBox();board.resizeContainer(w,h,true);board.setBoundingBox(vb,true);board.update()}catch(e){}}clipCore()}
+function fit(){var w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20){try{
+  /* داخل الدفتر التكبير والتحريك معطّلين: دايماً بنعرض نفس المنطقة المحفوظة (M.bb) بنفس مقياس الصورة بالضبط */
+  var vb=M.compact?M.bb.slice():board.getBoundingBox();board.resizeContainer(w,h,true);board.setBoundingBox(vb,true);board.update()}catch(e){}}clipCore()}
+fit();
 board.on('update',clipCore);clipCore();
 if(window.ResizeObserver)new ResizeObserver(fit).observe(bd);
 window.addEventListener('message',function(ev){
