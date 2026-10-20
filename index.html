@@ -6075,10 +6075,10 @@ function plainAxes(){
   /* المحاور قطع مستقيمة محدودة من حافة الشاشة للحافة (مش مستقيمات لانهائية) */
   const bb0=()=>board.getBoundingBox(),mg=()=>4/(board.unitX||30);
   const P=(fx,fy)=>board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1});
-  const ax=board.create('segment',[P(()=>bb0()[0]+mg(),()=>0),P(()=>bb0()[2]-mg(),()=>0)],sty());
+  const ax=board.create('segment',[P(()=>bb0()[0]+.08*(bb0()[2]-bb0()[0]),()=>0),P(()=>bb0()[2]-.08*(bb0()[2]-bb0()[0]),()=>0)],sty());
   const ay=board.create('segment',[P(()=>0,()=>bb0()[3]+mg()),P(()=>0,()=>bb0()[1]-mg())],sty());
   const bb=()=>board.getBoundingBox(),ux=()=>board.unitX||30,uy=()=>board.unitY||30;
-  const lx=txt(()=>bb()[2]-8/ux(),()=>7/uy(),'x',{anchorX:'right',anchorY:'bottom',fontSize:19,strokeColor:'#1c2433'});
+  const lx=txt(()=>bb()[2]-.08*(bb()[2]-bb()[0])-4/ux(),()=>7/uy(),'x',{anchorX:'right',anchorY:'bottom',fontSize:19,strokeColor:'#1c2433'});
   const ly=txt(()=>9/ux(),()=>bb()[1]-8/uy(),'y',{anchorX:'left',anchorY:'top',fontSize:19,strokeColor:'#1c2433'});
   return [ax,ay,lx,ly];
 }
@@ -6239,12 +6239,12 @@ function plainAx(){
   var sty=function(){return {strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}}};
   var cr=(M.core&&M.core.length===4)?M.core:null;
   /* بالعرض الحي المصغّر: المحاور بتنتهي عند حدود الرسم الأصلية (مع الأسهم) مثل الصورة، مش لحد طرف الإطار */
-  var mk=function(p2,sg){if(cr&&sg){return board.create('segment',sg,sty())}var bx=function(){return board.getBoundingBox()},mg=function(){return 4/(board.unitX||30)},P=function(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})};if(p2[0]===1)return board.create('segment',[P(function(){return bx()[0]+mg()},function(){return 0}),P(function(){return bx()[2]-mg()},function(){return 0})],sty());return board.create('segment',[P(function(){return 0},function(){return bx()[3]+mg()}),P(function(){return 0},function(){return bx()[1]-mg()})],sty())};
+  var mk=function(p2,sg){if(cr&&sg){return board.create('segment',sg,sty())}var bx=function(){return board.getBoundingBox()},mg=function(){return 4/(board.unitX||30)},P=function(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})};if(p2[0]===1)return board.create('segment',[P(function(){return bx()[0]+.08*(bx()[2]-bx()[0])},function(){return 0}),P(function(){return bx()[2]-.08*(bx()[2]-bx()[0])},function(){return 0})],sty());return board.create('segment',[P(function(){return 0},function(){return bx()[3]+mg()}),P(function(){return 0},function(){return bx()[1]-mg()})],sty())};
   var ax=mk([1,0],cr?[[cr[0],0],[cr[2],0]]:null),ay=mk([0,1],cr?[[0,cr[3]],[0,cr[1]]]:null);
   var ux=function(){return board.unitX||30},uy=function(){return board.unitY||30};
   /* بالعرض الحي المصغّر: الأسماء x,y بتنحط جوّا حدود الرسم الأصلية (core) عشان ما تنقص مع الصورة */
   var cbb=function(){var b=board.getBoundingBox(),c=M.core;return (c&&c.length===4)?[b[0],Math.min(b[1],c[1]),Math.min(b[2],c[2]),b[3]]:b};
-  var lx=txt(function(){return cbb()[2]-8/ux()},function(){return 7/uy()},'x',{anchorX:'right',anchorY:'bottom',fontSize:19});
+  var lx=txt(function(){return cbb()[2]-.08*(cbb()[2]-cbb()[0])-4/ux()},function(){return 7/uy()},'x',{anchorX:'right',anchorY:'bottom',fontSize:19});
   var ly=txt(function(){return 9/ux()},function(){return cbb()[1]-8/uy()},'y',{anchorX:'left',anchorY:'top',fontSize:19});
   return [ax,ay,lx,ly];
 }
