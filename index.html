@@ -5949,8 +5949,11 @@ function saBuild(){
   }
   const O=SA.O,E=hp(()=>1,()=>0),T=hp(()=>Math.cos(SA.th),()=>Math.sin(SA.th));
   const sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:true};
-  const r0=board.create('line',[O,E],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
-  const r1=board.create('line',[O,T],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
+  /* ضلعا الزاوية قطع محدودة (مش أشعة لانهائية): الطول بيتبع حجم الشاشة */
+  const SL=()=>{const b=board.getBoundingBox();return Math.max(1.5,.9*Math.min(b[2]-b[0],b[1]-b[3])/2)};
+  const E2=hp(()=>SL(),()=>0),T2=hp(()=>Math.cos(SA.th)*SL(),()=>Math.sin(SA.th)*SL());
+  const r0=board.create('segment',[O,E2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
+  const r1=board.create('segment',[O,T2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
   const R=s=>1+.25*Math.abs(SA.th)/TAU*s;
   const arc=board.create('curve',[s=>R(s)*Math.cos(s*SA.th),s=>R(s)*Math.sin(s*SA.th),0,1],{strokeColor:'#d97706',strokeWidth:2.2,highlight:false,fixed:true,withLabel:false,numberPoints:600,lastArrow:{type:1,size:3.5}});
   const lt=()=>fmt1(SA.th*180/Math.PI)+'°';
@@ -5959,7 +5962,7 @@ function saBuild(){
     return angPos(0,0,a0,t,1+.25*Math.abs(th)/TAU,lt().length)};
   const lb=txt(()=>pos()[0],()=>pos()[1],lt,{strokeColor:'#b45309',anchorX:'middle',anchorY:'middle',fontSize:16});
   SA.arc=arc;SA.lb=lb;
-  SA.g=reg({t:'sang',grp:'sang',kind:'o',els:[r0,r1,arc,lb,E,T],deps:[O],col:'#1d4ed8',hl:[r1,r0],hit:(x,y)=>safe(()=>r1.hasPoint(x,y)||r0.hasPoint(x,y)||arc.hasPoint(x,y))});
+  SA.g=reg({t:'sang',grp:'sang',kind:'o',els:[r0,r1,arc,lb,E,T,E2,T2],deps:[O],col:'#1d4ed8',hl:[r1,r0],hit:(x,y)=>safe(()=>r1.hasPoint(x,y)||r0.hasPoint(x,y)||arc.hasPoint(x,y))});
   if(axMode===0)setAxMode(2); /* المحاور x و y بتظهر تلقائياً مع الزاوية */
 }
 /* توزيع النقاط على ضلع النهاية: بأعداد صحيحة لما يكون الميل نسبة صحيحة، وإلا إحداثي صحيح والثاني تقريبي */
@@ -6069,8 +6072,11 @@ function toggleGrid(){if(!board)return;if(gridObj){board.removeGrids();gridObj=n
 let axMode=0; /* 0 مخفية، 1 بأرقام، 2 بدون أرقام (x و y بس) */
 function plainAxes(){
   const sty=()=>({strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}});
-  const mkA=p2=>{const a=board.create('axis',[[0,0],p2],sty());safe(()=>{if(a.defaultTicks)a.defaultTicks.setAttribute({visible:false});(a.ticks||[]).forEach(t=>t.setAttribute({visible:false}))});return a};
-  const ax=mkA([1,0]),ay=mkA([0,1]);
+  /* المحاور قطع مستقيمة محدودة من حافة الشاشة للحافة (مش مستقيمات لانهائية) */
+  const bb0=()=>board.getBoundingBox(),mg=()=>4/(board.unitX||30);
+  const P=(fx,fy)=>board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1});
+  const ax=board.create('segment',[P(()=>bb0()[0]+mg(),()=>0),P(()=>bb0()[2]-mg(),()=>0)],sty());
+  const ay=board.create('segment',[P(()=>0,()=>bb0()[3]+mg()),P(()=>0,()=>bb0()[1]-mg())],sty());
   const bb=()=>board.getBoundingBox(),ux=()=>board.unitX||30,uy=()=>board.unitY||30;
   const lx=txt(()=>bb()[2]-8/ux(),()=>7/uy(),'x',{anchorX:'right',anchorY:'bottom',fontSize:19,strokeColor:'#1c2433'});
   const ly=txt(()=>9/ux(),()=>bb()[1]-8/uy(),'y',{anchorX:'left',anchorY:'top',fontSize:19,strokeColor:'#1c2433'});
@@ -6233,7 +6239,7 @@ function plainAx(){
   var sty=function(){return {strokeColor:'#1c2433',strokeWidth:1.5,layer:6,highlight:false,fixed:true,withLabel:false,ticks:{visible:false},lastArrow:{type:1,size:5}}};
   var cr=(M.core&&M.core.length===4)?M.core:null;
   /* بالعرض الحي المصغّر: المحاور بتنتهي عند حدود الرسم الأصلية (مع الأسهم) مثل الصورة، مش لحد طرف الإطار */
-  var mk=function(p2,sg){if(cr&&sg){return board.create('segment',sg,sty())}var a=board.create('axis',[[0,0],p2],sty());try{if(a.defaultTicks)a.defaultTicks.setAttribute({visible:false});(a.ticks||[]).forEach(function(t){t.setAttribute({visible:false})})}catch(e){}return a};
+  var mk=function(p2,sg){if(cr&&sg){return board.create('segment',sg,sty())}var bx=function(){return board.getBoundingBox()},mg=function(){return 4/(board.unitX||30)},P=function(fx,fy){return board.create('point',[fx,fy],{visible:false,fixed:true,withLabel:false,name:'',showInfobox:false,size:1})};if(p2[0]===1)return board.create('segment',[P(function(){return bx()[0]+mg()},function(){return 0}),P(function(){return bx()[2]-mg()},function(){return 0})],sty());return board.create('segment',[P(function(){return 0},function(){return bx()[3]+mg()}),P(function(){return 0},function(){return bx()[1]-mg()})],sty())};
   var ax=mk([1,0],cr?[[cr[0],0],[cr[2],0]]:null),ay=mk([0,1],cr?[[0,cr[3]],[0,cr[1]]]:null);
   var ux=function(){return board.unitX||30},uy=function(){return board.unitY||30};
   /* بالعرض الحي المصغّر: الأسماء x,y بتنحط جوّا حدود الرسم الأصلية (core) عشان ما تنقص مع الصورة */
@@ -6247,8 +6253,10 @@ function addSang(it){
   var TAU=2*Math.PI,lim=10*TAU,th=Number(it.th)||0,th0=th,hr=it.hr>0?it.hr:3,showLb=it.lb!==0,busy=false,inp=null;
   var o0=hpt(function(){return 0},function(){return 0}),e1=hpt(function(){return 1},function(){return 0}),t1=hpt(function(){return Math.cos(th)},function(){return Math.sin(th)});
   var sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:true};
-  board.create('line',[o0,e1],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
-  board.create('line',[o0,t1],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
+  var SL=function(){var b=board.getBoundingBox();return Math.max(1.5,.9*Math.min(b[2]-b[0],b[1]-b[3])/2)};
+  var e2=hpt(function(){return SL()},function(){return 0}),t2=hpt(function(){return Math.cos(th)*SL()},function(){return Math.sin(th)*SL()});
+  board.create('segment',[o0,e2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
+  board.create('segment',[o0,t2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
   var R=function(s){return 1+.25*Math.abs(th)/TAU*s};
   var arc=board.create('curve',[function(s){return R(s)*Math.cos(s*th)},function(s){return R(s)*Math.sin(s*th)},0,1],{strokeColor:'#d97706',strokeWidth:2.2,highlight:false,fixed:true,withLabel:false,numberPoints:600,lastArrow:{type:1,size:3.5}});
   var lt=function(){return f1(th*180/Math.PI)+'°'};
