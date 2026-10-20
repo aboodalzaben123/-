@@ -4004,7 +4004,8 @@ function gLive(d,ask){
   const on=tool==='tap'&&d.vis&&d.g&&window.__GEO_HTML;
   const want=on?d.pg.items.filter(i=>i.k==='i'&&i.geo):[];
   d.gl.forEach((o,it)=>{
-    if(want.includes(it)&&o.src===it.geo)return;
+    if(want.includes(it)&&o.src===it.geo){o.fr.style.pointerEvents='auto';return}
+    o.fr.style.pointerEvents='none'; /* ما نخلي الإطار الحي يسرق اللمس من القلم والتحديد لما نطلع من وضع التفاعل */
     if(o.asking)return;
     if(ask&&o.dirty&&!want.includes(it)){o.asking=true;gAsk(d,it,o);return}
     o.fr.remove();d.gl.delete(it);if(GLV.delete(it))ch=true});
@@ -4021,6 +4022,8 @@ function gLive(d,ask){
     }
     const st=o.fr.style;st.left=(it.x-GE*it.w)*B+'px';st.top=(it.y-GE*it.h)*B+'px';st.width=it.w*(1+2*GE)*B+'px';st.height=it.h*(1+2*GE)*B+'px';
     st.transform=it.rot?'rotate('+it.rot+'rad)':'';
+    /* الإطار الحي أكبر من الصورة (هامش GE)، فلو شكلين فوق بعض كان الأخير بيغطّي الأول ويسرق اللمس. القص بيحصر الإطار على الصورة + هامش 48px على الأكثر (عشان الشكل لما تسحبه برا الصورة ما يختفي) */
+    const mxp=GE*it.w*B,myp=GE*it.h*B,mg=Math.min(48,mxp,myp),cp='inset('+(myp-mg)+'px '+(mxp-mg)+'px)';st.clipPath=cp;st.webkitClipPath=cp;
   });
   return ch}
 window.addEventListener('message',e=>{if(!e.data||e.data.t!=='geo-dirty')return;DOM.forEach(d=>{if(d.gl)d.gl.forEach(o=>{if(o.fr.contentWindow===e.source)o.dirty=!!e.data.dirty})})});
@@ -6305,7 +6308,7 @@ function addSang(it){
   var TAU=2*Math.PI,lim=10*TAU,th=Number(it.th)||0,th0=th,hr=it.hr>0?it.hr:3,showLb=it.lb!==0,busy=false,inp=null;
   var o0=hpt(function(){return 0},function(){return 0}),e1=hpt(function(){return 1},function(){return 0}),t1=hpt(function(){return Math.cos(th)},function(){return Math.sin(th)});
   var sd={highlight:false,fixed:true,withLabel:false,straightFirst:false,straightLast:false};
-  var SL0=M.ah>0?.75*M.ah:(function(){var b=board.getBoundingBox();return Math.max(1.5,.85*Math.min(b[2]-b[0],b[1]-b[3])/2)})(),SL=function(){return SL0};
+  var SL0=M.ah>0?.75*M.ah:(function(){var c=(M.core&&M.core.length===4)?M.core:board.getBoundingBox(),e=Math.min(c[2],-c[0],c[1],-c[3]);if(!(e>0))e=Math.min(c[2]-c[0],c[1]-c[3])/2;return Math.max(1,.75*e)})(),SL=function(){return SL0};
   var e2=hpt(function(){return SL()},function(){return 0}),t2=hpt(function(){return Math.cos(th)*SL()},function(){return Math.sin(th)*SL()});
   board.create('segment',[o0,e2],Object.assign({strokeColor:'#475569',strokeWidth:2.2},sd));
   board.create('segment',[o0,t2],Object.assign({strokeColor:'#1d4ed8',strokeWidth:2.4,lastArrow:{type:1,size:3.5}},sd));
@@ -6522,7 +6525,7 @@ board.on('update',upd);upd();
 if(M.compact){var ini=P.map(function(p){return p&&p.X?[p.X(),p.Y()]:null}),sa0=SAV?SAV():null;
   board.on('up',function(){var d=SAV!==null&&Math.abs(SAV()-sa0)>1e-9;for(var i=0;i<P.length;i++){var a=P[i]&&P[i].X?[P[i].X(),P[i].Y()]:null,b=ini[i];if(a&&b&&(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6)){d=true;break}}parent.postMessage({t:'geo-dirty',dirty:d},'*')})}
 /* بالعرض الحي المصغّر: بنقص كل شي برا حدود الرسم الأصلية (core) عشان الأضلاع والمحاور ما تطلع أطول من الصورة المحفوظة */
-function clipCore(){var c=M.core;if(!M.compact||!c||c.length!==4)return;try{var w=bd.clientWidth,h=bd.clientHeight,og=board.origin.scrCoords,ux=board.unitX,uy=board.unitY;
+function clipCore(){var c=M.core;if(!M.compact||!c||c.length!==4||!(M.items&&M.items.some(function(q){return q.k==='sang'})))return;try{var w=bd.clientWidth,h=bd.clientHeight,og=board.origin.scrCoords,ux=board.unitX,uy=board.unitY;
   var l=Math.max(0,og[1]+c[0]*ux),r=Math.min(w,og[1]+c[2]*ux),t=Math.max(0,og[2]-c[1]*uy),b=Math.min(h,og[2]-c[3]*uy);
   if(r-l>10&&b-t>10)bd.style.clipPath='inset('+t+'px '+(w-r)+'px '+(h-b)+'px '+l+'px)'}catch(e){}}
 function fit(){var w=bd.clientWidth,h=bd.clientHeight;if(w>20&&h>20){try{var vb=board.getBoundingBox();board.resizeContainer(w,h,true);board.setBoundingBox(vb,true);board.update()}catch(e){}}clipCore()}
