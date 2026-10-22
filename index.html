@@ -1618,15 +1618,15 @@ function texBlocks(src){src=texColCmds(src);const out=[],re=/\\begin\{(تعري�
   add(src.slice(i));return out}
 function texHtml(M,src,col){const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const rowsHtml=rows=>rows.map(r=>{if(r.d!==undefined){try{return'<div style="text-align:center;margin:4px 0">'+mjSvg(M,r.d.trim(),true,col||'#111',.018).x+'</div>'}catch(e){return'<code>'+esc(r.d)+'</code>'}}return'<div dir="auto" style="text-align:start">'+r.r.map(u=>{if(u.s!==undefined)return esc(u.s);try{const q=mjSvg(M,u.m.trim(),false,col||'#111',.018);return q.x.replace('<svg','<svg style="vertical-align:-'+q.desc+'px"')}catch(e){return'<code>'+esc(u.m)+'</code>'}}).join('')+'</div>'}).join('');
   return texBlocks(src).map(b=>{const h=rowsHtml(b.rows);if(!b.box)return h;const x=b.box;return'<div dir="rtl" style="margin:8px 0;padding:8px 12px;border:1.5px solid '+x.c+';border-right:6px solid '+x.c+';background:'+x.bg+';border-radius:10px">'+(x.t?'<div style="font-weight:700;color:'+x.c+';font-size:.85em;margin-bottom:3px">'+x.t+'</div>':'')+h+'</div>'}).join('')}
-async function texCanvas(M,src,col,fs,sc,opt){opt=opt||{};const FW=opt.bold?'bold ':'',BL=texBlocks(src),ents=[];BL.forEach(b=>{const arr=[];if(b.box&&b.box.t)arr.push({title:b.box.t,box:b.box});b.rows.forEach(r=>arr.push({r,box:b.box||null}));if(b.box&&arr.length){arr[0].bf=1;arr[arr.length-1].bl=1}ents.push(...arr)});const F=fs*sc,m0=document.createElement('canvas').getContext('2d'),P=[],loads=[];m0.font=FW+F+'px sans-serif';const mk=(t,d)=>{const q=mjSvg(M,t.trim(),d,col,fs/1000*sc),im=new Image();q.im=im;loads.push(new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(new Error('svg'));im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(q.x)}));return q};
-for(const E of ents){const r=E.r,X={box:E.box,bf:E.bf,bl:E.bl};if(E.title){m0.font='bold '+F*.8+'px sans-serif';const tw=m0.measureText(E.title).width;m0.font=FW+F+'px sans-serif';P.push(Object.assign({title:E.title,w:tw,asc:F*.7,desc:F*.25,rtl:1},X));continue}if(r.d!==undefined){const q=mk(r.d,true);P.push(Object.assign({d:1,q,w:q.w,asc:q.asc,desc:q.desc},X));continue}let w=0,asc=F*.8,desc=F*.25,rtl=0;const runs=r.r.map(u=>{if(u.s!==undefined){if(/[\u0600-\u06FF]/.test(u.s))rtl=1;const x=m0.measureText(u.s).width;w+=x;return{s:u.s,w:x}}const q=mk(u.m,false);w+=q.w;asc=Math.max(asc,q.asc);desc=Math.max(desc,q.desc);return{q,w:q.w}});P.push(Object.assign({runs,w,asc,desc,rtl},X))}
+async function texCanvas(M,src,col,fs,sc,opt){opt=opt||{};const FW=opt.bold?'bold ':'',BL=texBlocks(src),ents=[];BL.forEach(b=>{const arr=[];if(b.box&&b.box.t)arr.push({title:b.box.t,box:b.box});b.rows.forEach(r=>arr.push({r,box:b.box||null}));if(b.box&&arr.length){arr[0].bf=1;arr[arr.length-1].bl=1}ents.push(...arr)});const F=fs*sc,m0=document.createElement('canvas').getContext('2d'),P=[],loads=[];m0.font=FW+F+'px sans-serif';const BK='#111827',mk=(t,d,cc)=>{const q=mjSvg(M,t.trim(),d,cc||col,fs/1000*sc),im=new Image();q.im=im;loads.push(new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(new Error('svg'));im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(q.x)}));return q};
+for(const E of ents){const r=E.r,X={box:E.box,bf:E.bf,bl:E.bl};if(E.title){m0.font='bold '+F*.8+'px sans-serif';const tw=m0.measureText(E.title).width;m0.font=FW+F+'px sans-serif';P.push(Object.assign({title:E.title,w:tw,asc:F*.7,desc:F*.25,rtl:1},X));continue}if(r.d!==undefined){const q=mk(r.d,true,E.box?BK:col);P.push(Object.assign({d:1,q,w:q.w,asc:q.asc,desc:q.desc},X));continue}let w=0,asc=F*.8,desc=F*.25,rtl=0;const runs=r.r.map(u=>{if(u.s!==undefined){if(/[\u0600-\u06FF]/.test(u.s))rtl=1;const x=m0.measureText(u.s).width;w+=x;return{s:u.s,w:x}}const q=mk(u.m,false,E.box?BK:col);w+=q.w;asc=Math.max(asc,q.asc);desc=Math.max(desc,q.desc);return{q,w:q.w}});P.push(Object.assign({runs,w,asc,desc,rtl},X))}
 await Promise.all(loads);const pad=F*.25,gap=F*.3,bp=F*.55,bv=F*.4,rb=F*.2;if(opt.fixW&&P.some(p=>p.rtl))P.forEach(p=>{if(p.runs)p.rtl=1});if(opt.maxW)lsnWrap(P,m0,F,opt.maxW-pad*2,bp*2+rb);const W=opt.fixW&&opt.maxW?Math.ceil(opt.maxW):Math.ceil(Math.max(1,...P.map(p=>p.w+(p.box?bp*2+rb:0)))+pad*2);
 let y=pad/2,cur=0;const rects=[];for(const p of P){if(p.bf){cur=y;y+=bv}p.y=y;y+=p.asc+p.desc;if(p.bl){y+=bv;rects.push({y:cur,h:y-cur,box:p.box});y+=F*.25}else y+=gap}
 const H=Math.ceil(y+pad/2+(opt.rule?F*.3:0)),cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.font=FW+F+'px sans-serif';g.fillStyle=col;g.textBaseline='alphabetic';g.textAlign='left';
 const rr=(r)=>{g.beginPath();if(g.roundRect)g.roundRect(pad,r.y,W-pad*2,r.h,F*.35);else g.rect(pad,r.y,W-pad*2,r.h)};
 rects.forEach(r=>{g.save();rr(r);g.fillStyle=r.box.bg;g.fill();g.clip();g.fillStyle=r.box.c;g.fillRect(W-pad-rb,r.y,rb,r.h);g.restore();rr(r);g.strokeStyle=r.box.c;g.lineWidth=Math.max(1,F*.07);g.stroke()});
 g.fillStyle=col;
-for(const p of P){const y0=p.y,b=y0+p.asc,ix=p.box?bp:0,rb2=p.box?rb:0;
+for(const p of P){const y0=p.y,b=y0+p.asc,ix=p.box?bp:0,rb2=p.box?rb:0;g.fillStyle=p.box?BK:col;
   if(p.title){g.save();g.font='bold '+F*.8+'px sans-serif';g.fillStyle=p.box.c;g.direction='rtl';g.textAlign='right';g.fillText(p.title,W-pad-ix-rb2,b);g.restore();continue}
   if(p.d){g.drawImage(p.q.im,(W-p.w)/2,y0,p.q.w,p.q.h)}else{g.direction=p.rtl?'rtl':'ltr';let x=p.rtl?W-pad-ix-rb2:pad+ix;for(const u of p.runs){if(p.rtl)x-=u.w;if(u.q)g.drawImage(u.q.im,x,b-u.q.asc,u.q.w,u.q.h);else g.fillText(u.s,x,b);if(!p.rtl)x+=u.w}}}
 if(opt.rule){g.fillStyle=opt.rule;g.fillRect(pad,H-F*.22,W-pad*2,Math.max(2,F*.07))}
@@ -2161,7 +2161,7 @@ function applyPc(c,all){
   const v=c&&c!=='#ffffff'?c:undefined;if(all){if(v)book.pc=v;else delete book.pc}
   const ps=(all?book.pages:[book.pages[curPg]]).filter(p=>p&&!p.bg&&p.pc!==v);
   if(!ps.length){gs(all?'كل الصفحات أصلاً بهاللون':'الصفحة أصلاً بهاللون');return}
-  const old=ps.map(p=>p.pc),ap=a=>ps.forEach((p,i)=>{const x=a?v:old[i];if(x)p.pc=x;else delete p.pc;rd(p)});
+  const old=ps.map(p=>p.pc),ap=a=>{ps.forEach((p,i)=>{const x=a?v:old[i];if(x)p.pc=x;else delete p.pc;rd(p)});lsnRefresh(ps)};
   undo.push({pg:ps[0],u:()=>ap(false),r:()=>ap(true)});redo=[];ap(true);save();
   gs('لون الصفحة تغيّر'+(all?' — على '+ps.length+(ps.length>10?' صفحة':' صفحات'):''))}
 function openTpl(){
@@ -2542,6 +2542,19 @@ async function lsnSplit(M,src,col,fs,sc,opt,rem){const cuts=lsnCuts(src);if(!cut
     if(--ans<0)return null;
     a=src.slice(0,cuts[ans]).trimEnd();b=src.slice(cuts[ans]).trimStart();ao=await texCanvas(M,lsnMark(a),col,fs,sc,opt)}
   return[{o:ao,k:'p',src:a},{o:ro,k:'p',src:b}]}
+/* إعادة رسم صور الدرس لما لون الصفحة يتغير (غامق <-> فاتح): النص بياخد لون مناسب، والصناديق نصها غامق دايماً */
+async function lsnRefresh(pgs){const L=(pgs||[]).filter(p=>p&&p.items&&p.items.some(i=>i.ls));if(!L.length)return;
+  let M=null;try{M=await loadMJ({})}catch(e){}if(!M)return;
+  const sc=2,W0=900*(1-2*.07);let ch=0;
+  for(const pg of L){const dk=psDark(pg)?1:0,tc=dk?'#f1f5f9':'#111827',hc=dk?'#93c5fd':'#1e3a8a';
+    for(const it of pg.items){const l=it.ls;if(!l||l.dk===dk)continue;
+      try{let o;
+        if(l.k[0]==='h'){const n=+l.k[1];o=await texCanvas(M,l.s,n===1?hc:tc,l.fs*(n===1?1.6:n===2?1.3:1.1),sc,{bold:true,rule:n===1?hc:(n===2?'#9ca3af':0),maxW:W0*sc,fixW:true})}
+        else if(it.tex)o=await texCanvas(M,lsnMark(it.tex),tc,l.fs,sc,{maxW:W0*sc,fixW:true});
+        else continue;
+        it.src=o.src;IT.delete(it);l.dk=dk;ch++}catch(e){}}
+    rd(pg)}
+  if(ch)save()}
 async function lsnBuild(txt,cfg){if(!book)return;
   const B=lsnParse(txt);if(!B.length){gs('اكتب الدرس أول');return}
   const needM=/\$|\\\(|\\\[|\\begin\{/.test(txt);let M=null;
@@ -2552,7 +2565,7 @@ async function lsnBuild(txt,cfg){if(!book)return;
   const R=[];let k=0,bad=0;gs('⏳ عم أرتّب الدرس…');
   for(const b of B){k++;if(k%3===0){gs('⏳ عم أرتّب الدرس… '+k+'/'+B.length);await new Promise(r=>setTimeout(r,0))}
     try{
-      if(b.k[0]==='h'){const n=+b.k[1],o=await texCanvas(M,b.s,n===1?hc:tc,fs*(n===1?1.6:n===2?1.3:1.1),sc,Object.assign({bold:true,rule:n===1?hc:(n===2?'#9ca3af':0)},base));R.push({o,k:b.k,t:b.s})}
+      if(b.k[0]==='h'){const n=+b.k[1],o=await texCanvas(M,b.s,n===1?hc:tc,fs*(n===1?1.6:n===2?1.3:1.1),sc,Object.assign({bold:true,rule:n===1?hc:(n===2?'#9ca3af':0)},base));R.push({o,k:b.k,t:b.s,hs:1})}
       else{const s=b.k==='e'?b.s:texAuto(b.s);(await lsnFit(M,s,tc,fs,sc,base,maxH,0)).forEach(r=>R.push({o:r.o,k:b.k,src:r.src}))}
     }catch(e){bad++}}
   if(!R.length){gs('⚠ ما قدرت أرتّب الدرس');return}
@@ -2564,7 +2577,7 @@ async function lsnBuild(txt,cfg){if(!book)return;
     if(!fit&&r.k==='p'){const rem=(lim-y-gb)*900;
       if(rem>=fs*3.3){try{const sp=await lsnSplit(M,r.src,tc,fs,sc,base,rem);if(sp){R.splice(i,1,sp[0],sp[1]);r=sp[0];h=r.o.h/900;fit=true}}catch(e){}}}
     if(!fit){np();gb=0}else y+=gb;
-    pg.items.push(Object.assign({k:'i',src:r.o.src,x:mx,y:y,w:r.o.w/900,h:h},r.src?{tex:r.src}:{}));
+    pg.items.push(Object.assign({k:'i',src:r.o.src,x:mx,y:y,w:r.o.w/900,h:h},r.src?{tex:r.src}:{},{ls:Object.assign({k:r.k,fs:fs,dk:psDark(pg)?1:0},r.hs?{s:r.t}:{})}));
     y+=h+GA[r.k];
     if(head&&r.k!=='h3'){const t=r.t.replace(/\\\(|\\\)|\$/g,'').trim().slice(0,80);if(r.k==='h1'){if(!pg.ti||pg.tl===2){pg.ti=t;delete pg.tl}}else if(!pg.ti){pg.ti=t;pg.tl=2}}}
   const at=covClamp(curPg+1);book.pages.splice(at,0,...pgs);renderBook();goPg(at);save();
