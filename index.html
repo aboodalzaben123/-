@@ -26,6 +26,68 @@ html.pane #splB,html.pane #splB2,html.pane #bkNag,html.pane #stNote,html.pane #u
 <style id="geocss">#geo{padding-top:4px}#geoTools,#geoActs{gap:5px;margin:6px 0 0}#geoTools button,#geoActs button{padding:6px 8px;font-size:13px}#geoSt{min-height:20px;margin:6px 2px}#geoBoard{width:100%;height:320px;direction:ltr;touch-action:none;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--line);overflow:hidden;position:relative}#geoBoard svg{touch-action:none;display:block}#calc.mini #geo{display:none!important}</style>
 <style id="foldskin">.fold.fsk{background:transparent!important;padding:2px 0!important;display:flex;justify-content:center}.fsk svg{width:100%;height:84px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}.fsk svg *{vector-effect:none}.grid.list .bk .fold.fsk svg{height:56px}.bk .mn{z-index:5}</style>
 <style id="fitfix">.panel,#dlg,#pmenu{max-width:min(96vw,calc(100% - 12px))!important}#pmenu{max-height:calc(100% - 16px);overflow:auto}</style>
+<script id="errlogjs">
+/* ===== سجل أخطاء على الشاشة (للتجربة): زر 🐞 صغير، بيحمرّ لما يصير خطأ. اضغطه لتشوف التفاصيل وتنسخها ===== */
+(()=>{if(window.__ERRLOG)return;
+const KEY='nberrlog',MAX=40,TAPMAX=25,L=[];let trace=false,badge=null,panel=null,list=null,tbtn=null,seq=0;
+const hhmm=()=>new Date().toTimeString().slice(0,8);
+try{const s=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(s))s.slice(-MAX).forEach(x=>{x.old=1;x.q=++seq;L.push(x)})}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(L.filter(x=>x.k!=='tap').slice(-MAX).map(x=>({t:x.t,k:x.k,m:x.m,w:x.w,s:x.s,n:x.n}))))}catch(e){}};
+const add=(k,m,w,s)=>{try{
+  m=String(m==null?'':m).slice(0,400);w=String(w||'');
+  if(k==='error'&&/ResizeObserver loop/.test(m))return;
+  const last=L[L.length-1];
+  if(last&&!last.old&&last.k===k&&last.m===m&&last.w===w){last.n=(last.n||1)+1;last.t=hhmm()}
+  else{L.push({t:hhmm(),k,m,w,s:String(s||'').split('\n').slice(0,6).join('\n').slice(0,700),n:1,q:++seq});
+    if(k==='tap'){const taps=L.filter(x=>x.k==='tap');if(taps.length>TAPMAX)L.splice(L.indexOf(taps[0]),1)}
+    else if(L.filter(x=>x.k!=='tap').length>MAX)L.splice(L.findIndex(x=>x.k!=='tap'),1)}
+  save();ui()}catch(e){}};
+const cnt=()=>L.filter(x=>!x.old&&(x.k==='error'||x.k==='promise'||x.k==='handler'||x.k==='console')).reduce((a,x)=>a+(x.n||1),0);
+const LBL={error:'خطأ',promise:'وعد مرفوض',handler:'خطأ بمعالج القلم/اللمس',console:'console.error',silent:'خطأ صامت (ما بيظهر للمستخدم)',tap:'لمسة'};
+const fmt=x=>'['+x.t+'] '+(LBL[x.k]||x.k)+(x.n>1?' ×'+x.n:'')+(x.old?' (جلسة سابقة)':'')+'\n'+x.m+(x.w?'\n@ '+x.w:'')+(x.s?'\n'+x.s:'');
+const head=()=>'UA: '+navigator.userAgent+'\nشاشة: '+innerWidth+'x'+innerHeight+' dpr='+(devicePixelRatio||1)+'\nنسخة التطبيق: '+((document.querySelector('meta[name=app-version]')||{}).content||'?');
+const ui=()=>{if(!badge)return;const n=cnt();badge.textContent=n?'🐞 '+n:'🐞';badge.classList.toggle('bad',n>0);if(panel&&!panel.hidden)render()};
+const render=()=>{if(!list)return;list.textContent='';
+  const rows=L.slice().sort((a,b)=>b.q-a.q);
+  if(!rows.length){const d=document.createElement('div');d.className='e';d.textContent='ما في أخطاء مسجّلة.';list.append(d);return}
+  rows.forEach(x=>{const d=document.createElement('div');d.className='e '+x.k+(x.old?' old':'');const b=document.createElement('b');b.textContent='['+x.t+'] '+(LBL[x.k]||x.k)+(x.n>1?' ×'+x.n:'')+(x.old?' (جلسة سابقة)':'');d.append(b,document.createTextNode('\n'+x.m+(x.w?'\n@ '+x.w:'')+(x.s?'\n'+x.s:'')));list.append(d)})};
+const copy=async()=>{const txt=head()+'\n\n'+L.slice().sort((a,b)=>b.q-a.q).map(fmt).join('\n\n');
+  try{await navigator.clipboard.writeText(txt);return true}catch(e){}
+  try{const t=document.createElement('textarea');t.value=txt;t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();const ok=document.execCommand('copy');t.remove();return ok}catch(e){return false}};
+const dn=n=>{if(!n||!n.tagName)return String(n);let s=n.tagName.toLowerCase()+(n.id?'#'+n.id:'');try{if(typeof n.className==='string'&&n.className.trim())s+='.'+n.className.trim().split(/\s+/).slice(0,2).join('.');if(n.disabled)s+=' [disabled]';if(getComputedStyle(n).pointerEvents==='none')s+=' [pe:none]'}catch(e){}return s};
+const build=()=>{
+  const st=document.createElement('style');st.textContent=
+  '#elb{position:fixed;z-index:2147483000;right:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);min-width:34px;height:34px;padding:0 10px;border-radius:17px;border:0;font:600 13px system-ui,sans-serif;background:rgba(60,60,67,.55);color:#fff;opacity:.5;touch-action:manipulation}'+
+  '#elb.bad{background:#d62d3a;opacity:1}'+
+  '#elp{position:fixed;z-index:2147483001;left:0;right:0;bottom:0;max-height:72vh;display:flex;flex-direction:column;background:#fff;color:#111;border-top:2px solid #d62d3a;box-shadow:0 -6px 24px rgba(0,0,0,.3);font:13px system-ui,sans-serif;direction:rtl}'+
+  '#elp[hidden]{display:none}#elp .h{display:flex;gap:6px;align-items:center;padding:8px 10px;flex-wrap:wrap;border-bottom:1px solid #ddd}'+
+  '#elp .h strong{flex:1;min-width:90px}#elp button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #bbb;background:#f4f4f6;color:#111}#elp button.on{background:#0a64d6;color:#fff;border-color:#0a64d6}'+
+  '#elp .b{overflow:auto;padding:4px 10px 12px;-webkit-overflow-scrolling:touch}'+
+  '#elp .e{border-bottom:1px solid #eee;padding:7px 0;direction:ltr;text-align:left;font:12px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word}'+
+  '#elp .e b{color:#d62d3a}#elp .e.old{opacity:.55}#elp .e.tap b{color:#0a64d6}#elp .e.silent b{color:#b7791f}';
+  document.head.append(st);
+  badge=document.createElement('button');badge.id='elb';badge.type='button';badge.textContent='🐞';badge.setAttribute('aria-label','سجل الأخطاء');
+  panel=document.createElement('div');panel.id='elp';panel.hidden=true;
+  const h=document.createElement('div');h.className='h';const ti=document.createElement('strong');ti.textContent='سجل الأخطاء';
+  const mk=(t,f)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=f;return b};
+  const cb=mk('نسخ الكل',async e=>{const ok=await copy();e.target.textContent=ok?'تم النسخ ✓':'ما اننسخ';setTimeout(()=>e.target.textContent='نسخ الكل',1600)});
+  tbtn=mk('تتبع اللمس: مطفي',()=>{trace=!trace;tbtn.textContent='تتبع اللمس: '+(trace?'شغّال':'مطفي');tbtn.classList.toggle('on',trace)});
+  const cl=mk('مسح',()=>{L.length=0;save();ui();render()});
+  const x=mk('✕',()=>{panel.hidden=true});
+  h.append(ti,cb,tbtn,cl,x);list=document.createElement('div');list.className='b';panel.append(h,list);
+  badge.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)render()};
+  document.body.append(badge,panel);ui()};
+if(document.body)build();else document.addEventListener('DOMContentLoaded',build);
+addEventListener('error',e=>{if(e.target&&e.target!==window)return;add('error',e.message,((e.filename||'').split('/').pop()||'')+':'+(e.lineno||0)+':'+(e.colno||0),e.error&&e.error.stack)});
+addEventListener('unhandledrejection',e=>{const r=e.reason;add('promise',r&&r.message||String(r),'',r&&r.stack)});
+const ce=console.error;console.error=function(){try{add('console',[].map.call(arguments,a=>a&&a.message?a.message:typeof a==='object'?JSON.stringify(a):String(a)).join(' '))}catch(_){}return ce.apply(console,arguments)};
+const inUI=t=>t&&t.closest&&t.closest('#elp,#elb');
+document.addEventListener('pointerdown',e=>{if(!trace||inUI(e.target))return;let top=null;try{top=document.elementFromPoint(e.clientX,e.clientY)}catch(_){}
+  add('tap',e.pointerType+' @'+Math.round(e.clientX)+','+Math.round(e.clientY),'target='+dn(e.target)+(top!==e.target?'  top='+dn(top):''))},true);
+document.addEventListener('click',e=>{if(!trace||inUI(e.target))return;add('tap','click','target='+dn(e.target))},true);
+window.__ERRLOG={add,get list(){return L}};
+})();
+</script>
 <style id="appcss">
 :root{--bg:#f3f6fb;--card:#ffffff;--elev:#eaf0f8;--ink:#1c2433;--mute:#66738a;--line:#d9e1ee;--accent:#3b82f6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#f3f6fb;--card:#ffffff;--elev:#eaf0f8;--ink:#1c2433;--mute:#66738a;--line:#d9e1ee;--accent:#3b82f6}}
@@ -1105,6 +1167,10 @@ function drawCorners(g,pg,cw,ch){
       g.fillText(t,x+w/2,y+h/2+u)}
     g.restore()})}
 function cmRedraw(){if(!book)return;book.pages.forEach(p=>{if(p.tpl==='corners'&&!p.bg)rd(p)})}
+/* v12: الهوامش بتنرسم بس على صفحات قالبها «هوامش الزوايا». فلما تعدّل من ⋯ المزيد ← هاي الصفحة وصفحتك بقالب عادي، ما كان يبين شي.
+   هلأ أول تعديل (لون/نص/مدى/إضافة/شكل ورق) بيحوّل الصفحة الحالية لقالب الهوامش لحاله (بيتراجع عنه بزر التراجع). الصفحات الخاصة (غلاف/فهرس/PDF/حيّة/ورقة عمل/امتحان/قوانين) ما بتتحوّل عشان ما نخرّب تصميمها. */
+function cmCan(q){return!!q&&!q.bg&&!q.cvr&&!q.idx&&!q.live&&(!q.tpl||['blank','lined','wide','grid','dots','cornell'].includes(q.tpl))}
+function cmEnsure(){const q=book&&book.pages[curPg];if(q&&q.tpl!=='corners'&&cmCan(q))applyTpl('corners',false)}
 function cmFix(cm,r){ /* الهامش المعدَّل له الأولوية: بقصّ أو بتقسيم أي هامش ثاني بنفس الزاوية بتتقاطع معه الصفحات */
   if(r.b<r.a)r.b=r.a;let n=0;
   cm.slice().forEach(o=>{if(o===r||o.c!==r.c||o.a>r.b||o.b<r.a)return;
@@ -1114,8 +1180,10 @@ function cmFix(cm,r){ /* الهامش المعدَّل له الأولوية: ب
     else{cm.splice(cm.indexOf(o),1);n++}});
   return n}
 function openCm(){
-  if(!book)return;if(!book.cm)book.cm=CM_DEF();const cm=book.cm,np=book.pages.length,ch=()=>{save();cmRedraw()};
+  if(!book)return;if(!book.cm)book.cm=CM_DEF();const cm=book.cm,np=book.pages.length,ch=()=>{cmEnsure();ntU();save();cmRedraw()};
   dlg.textContent='';dlg.hidden=false;dlg.append(mk('b','','🔲 هوامش الزوايا'));
+  const nt=mk('span','st'),ntU=()=>{const q=book.pages[curPg];nt.textContent=!q||(q.tpl==='corners'&&!q.bg)?'':cmCan(q)?'ℹ️ قالب هاي الصفحة مش «هوامش الزوايا». أول ما تغيّر لون أو نص أو مدى رح تتحوّل لحالها وتشوف التغيير مباشرة.':'ℹ️ هاي الصفحة (غلاف / فهرس / PDF / ورقة خاصة) ما بتعرض الهوامش. التغييرات بتنطبق على صفحات الهوامش بالدفتر.';nt.hidden=!nt.textContent};
+  ntU();dlg.append(nt);
   const pp=mk('div','row'),pbs=CM_P.map(([v,l])=>{const b=mk('button','',l);b.onclick=()=>{book.cp=v;rf();ch()};pp.append(b);return[v,b]}),rf=()=>pbs.forEach(([v,b])=>b.classList.toggle('on',v===(book.cp||'lined')));
   rf();dlg.append(mk('span','st','شكل الورق'),pp);
   dlg.append(mk('span','st','كل هامش بيظهر بزاوية، من صفحة كذا لصفحة كذا. لما تعدّل مدى هامش أو تضيف هامش جديد، المدى المتداخل لهامش ثاني بنفس الزاوية بيتعدّل لحاله. الدفتر فيه '+np+' صفحة.'));
@@ -1182,7 +1250,7 @@ function dqRun(){DQr=0;DQ=DQ.filter(d=>d.vis&&d.g);if(!DQ.length||!book)return;l
 function fit(d){
   const B=baseW();d.el.style.width=B+'px';d.el.style.height=Math.round(B*d.pg.ar)+'px';
   if(d.fr){d.fr.style.height=Math.round(900*d.pg.ar)+'px';d.fr.style.transform='scale('+(B/900)+')'}
-  if(d.vis){if(d.fr&&!d.fr._l)loadLive(d);const k=Math.min(window.devicePixelRatio||1,2200/B,Math.sqrt(7e6/(B*B*d.pg.ar)));d.cv.width=Math.round(B*k);d.cv.height=Math.round(B*k*d.pg.ar);d.g=d.cv.getContext('2d');d.ov.width=d.cv.width;d.ov.height=d.cv.height;d.og=d.ov.getContext('2d');
+  if(d.vis){if(d.fr&&!d.fr._l)loadLive(d);const k=Math.min(window.devicePixelRatio||1,2200/B,Math.sqrt(7e6/(B*B*d.pg.ar)));d.cv.width=Math.round(B*k);d.cv.height=Math.round(B*k*d.pg.ar);d.g=d.cv.getContext('2d');d.ov.width=d.cv.width;d.ov.height=d.cv.height;d.og=d.ov.getContext('2d',{desynchronized:true});
     if(d.pg.bg&&IMG[d.pg.bg]===undefined)loadBg(d.pg.bg).then(()=>rd(d.pg));if(book&&Math.abs(book.pages.indexOf(d.pg)-curPg)<=3)rd(d.pg);else qDraw(d)}
   else{try{gLive(d)}catch(e){}d.cv.width=1;d.cv.height=1;d.g=null;d.ov.width=1;d.ov.height=1;d.og=null}
 }
@@ -1454,7 +1522,8 @@ function doUndo(){const a=undo.pop();if(!a)return;if(a.u)a.u();else if(a.add){co
 function doRedo(){const a=redo.pop();if(!a)return;if(a.r)a.r();else if(a.add)a.pg.items.push(a.add);else a.del.forEach(({it})=>{const i=a.pg.items.indexOf(it);if(i>=0)a.pg.items.splice(i,1)});undo.push(a);rd(a.pg);save()}
 
 /* ---------- page DOM + input ---------- */
-const P=(e,cv)=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.width,Math.max(.15,e.pressure||.5)]};
+const tiltBoost=e=>{if(e.pointerType!=='pen')return 0;let th=0;if(typeof e.altitudeAngle==='number')th=90-e.altitudeAngle*57.2958;else if(e.tiltX||e.tiltY){const tx=Math.tan((e.tiltX||0)*.0174533),ty=Math.tan((e.tiltY||0)*.0174533);th=Math.atan(Math.hypot(tx,ty))*57.2958}return th>50?Math.min(1,(th-50)/35):0};
+const P=(e,cv)=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.width,Math.max(.15,e.pressure||.5)+tiltBoost(e)]};
 const SH={line:'l',rect:'r',ell:'e',arrow:'w',tri:'y',dia:'d',geo:'o'};
 const LANGS=['','wl','py','js','tex'],LB={'':'</>',wl:'WL',py:'Py',js:'JS',tex:'TeX'},CC={c:'#6e7781',s:'#0a3069',n:'#0550ae',k:'#cf222e',f:'#8250df',p:'#e36209',o:'#57606a'},sL=(o,l)=>{if(l)o.L=l;else delete o.L};
 const CR={tex:[['c',/%.*/],['k',/\$\$?|\\[\[\]()]/],['f',/\\[A-Za-z]+|\\./],['n',/\b\d+\.?\d*/],['o',/[{}^_&=+\-*\/<>|]/]],wl:[['c',/\(\*[\s\S]*?(?:\*\)|$)/],['s',/"(?:\\.|[^"\\])*"?/],['n',/\b\d+\.?\d*(?:\*\^-?\d+)?|\.\d+/],['p',/[A-Za-z$][A-Za-z0-9$]*_{1,3}[A-Za-z0-9$]*|_{1,3}[A-Za-z0-9$]*|#{1,2}\d*/],['f',/\$?[A-Z][A-Za-z0-9$]*/],['o',/->|:>|\/@|@@@?|\/\.|\/\/|;;|:=|==|!=|<=|>=|&&|\|\||[+\-*\/^=&]/]],
@@ -1889,6 +1958,7 @@ function mkPage(pg,idx){
   cv.addEventListener('pointermove',e=>{if(lp&&e.pointerId===lp.id&&Math.hypot(e.clientX-lp.x,e.clientY-lp.y)>10){clearTimeout(lp.t);lp=null}});
   ['pointerup','pointercancel'].forEach(n=>cv.addEventListener(n,e=>{if(lp&&e.pointerId===lp.id){clearTimeout(lp.t);lp=null}}));
   const live=it=>{if(!d.og)return;d.og.clearRect(0,0,ov.width,ov.height);if(d.tmp&&d.tmp.length){const now=performance.now();d.tmp.forEach(q=>{const h=q.h||2200,a=now-q.t<=h?1:1-(now-q.t-h)/700;q.it.al=Math.max(0,a);if(a>0)drawItem(d.og,q.it,ov.width)})}if(it)drawItem(d.og,it,ov.width)};
+  const livePred=(it,e)=>{let n=0;try{if(e.pointerType==='pen'&&e.getPredictedEvents&&it.k==='s'&&it.p&&it.p.length&&drag&&!drag.hold&&!drag.rl&&!drag.sh&&!drag.hs){const q=it.p;for(const pe of e.getPredictedEvents().slice(0,4)){const p=P(pe,cv),l=q[q.length-1];if(Math.hypot(p[0]-l[0],p[1]-l[1])*cv.clientWidth<.7)continue;p[2]=l[2]*.6+p[2]*.4;q.push(p);n++}}}catch(_){}live(it);if(n){it.p.length-=n;SC.delete(it)}};
   const tmpLoop=()=>{d.tr=0;if(!d.tmp||!d.tmp.length)return;const now=performance.now();d.tmp=d.tmp.filter(q=>now-q.t<(q.h||2200)+700);if(!(drag&&!drag.it))live(drag&&drag.it?drag.it:null);if(d.tmp.length)d.tr=requestAnimationFrame(tmpLoop)};
   const buz=()=>{try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}};
   const ring=p=>{if(!d.og)return;const g=d.og,w=ov.width;g.clearRect(0,0,w,ov.height);g.save();g.strokeStyle='rgba(110,110,110,.95)';g.fillStyle='rgba(120,120,120,.12)';g.lineWidth=Math.max(1,w/450);g.beginPath();g.arc(p[0]*w,p[1]*w,ER.size/900*w,0,7);g.fill();g.stroke();g.restore()};
@@ -1913,7 +1983,7 @@ function mkPage(pg,idx){
       if(d0.it.k!=='l'){if(['r','e','y','d'].includes(d0.it.k)){const Q=(d0.it.k==='e'?ellPts(d0.it.p):poly(d0.it)).slice(0,-1);d0.it.k='q';d0.it.p=Q.map(q=>[q[0],q[1]])}const P=d0.it.p,xs=P.map(q=>q[0]),ys=P.map(q=>q[1]),cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;d0.sb={base:P.map(q=>[q[0],q[1]]),cx,cy,a0:Math.atan2(lp[1]-cy,lp[0]-cx),d0:Math.max(Math.hypot(lp[0]-cx,lp[1]-cy),.02)};gs('دوّر إصبعك حول الشكل لتدويره بحرية، ابعد أو قرّب لتغيير الحجم، ارفع للتثبيت')}
       live(d0.it);buz();spArm(d0,lp)}}else if(d0.it&&d0.it.k==='s'&&d0.it.a===.35&&d0.it.p.length>2){const P=d0.it.p,a=P[0],z=P[P.length-1];d0.hold=true;d0.hl0=[a[0],a[1],.5];d0.it.p=[d0.hl0,hlEnd(d0.hl0,z)];SC.delete(d0.it);live(d0.it);buz();gs('خط مستقيم: حرّك للتعديل، ارفع للتثبيت')}},420)};
   const liveLasso=(pts,cl)=>{if(!d.og)return;const g=d.og,w=ov.width;g.clearRect(0,0,w,ov.height);g.save();g.setLineDash([10,7]);g.lineWidth=w/350;g.strokeStyle='#2f5bea';g.fillStyle='rgba(47,91,234,.08)';g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0]*w,q[1]*w):g.moveTo(q[0]*w,q[1]*w));if(cl){g.closePath();g.fill()}g.stroke();g.restore()};
-  const safe=f=>e=>{try{f(e)}catch(err){drag=null;sc=null;try{live(null);rd(pg)}catch(x){}gs('خطأ: '+(err&&err.message||err))}};
+  const safe=f=>e=>{try{f(e)}catch(err){try{window.__ERRLOG&&__ERRLOG.add('handler',err&&err.message||err,'pointer '+(e&&e.type),err&&err.stack)}catch(_){}drag=null;sc=null;try{live(null);rd(pg)}catch(x){}gs('خطأ: '+(err&&err.message||err))}};
   cv.addEventListener('pointerdown',safe(e=>{
     if(e.pointerType==='pen')penSeen=true;
     if(e.pointerType==='pen'&&tsA&&tsBar&&!tsBar.hidden){tsPen={id:e.pointerId};cv.setPointerCapture(e.pointerId);e.preventDefault();penExt(e);return}
@@ -1965,7 +2035,7 @@ function mkPage(pg,idx){
       else if(drag.rot){const an=Math.atan2(p[1]-drag.cy,p[0]-drag.cx);let da=an-drag.a0;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;drag.a0=an;if(da){if(!drag.conv)convRot(pg,drag);drag.items.forEach(i=>rotateItem(i,da,drag.cx,drag.cy));drag.tot+=da}}
       else if(drag.hold){if(drag.it.k==='l'){const s0=drag.it.p[0],dx=p[0]-s0[0],dy=p[1]-s0[1],Ln=Math.hypot(dx,dy),r=softAng(dx,dy,drag.snA);drag.snA=r.s;drag.it.p=[s0,[s0[0]+Ln*Math.cos(r.a),s0[1]+Ln*Math.sin(r.a)]]}else if(drag.sb){const sb=drag.sb,r=Math.hypot(p[0]-sb.cx,p[1]-sb.cy)/sb.d0,k=Math.max(.15,Math.min(8,r<.7?r/.7:r>1.4?r/1.4:1)),da=Math.atan2(p[1]-sb.cy,p[0]-sb.cx)-sb.a0,c=Math.cos(da),s=Math.sin(da);drag.it.p=sb.base.map(q=>{const u=(q[0]-sb.cx)*k,v=(q[1]-sb.cy)*k;return[sb.cx+u*c-v*s,sb.cy+u*s+v*c]});SC.delete(drag.it)}else if(drag.hl0){drag.it.p=[drag.hl0,hlEnd(drag.hl0,p)];SC.delete(drag.it)}}else{if(drag.rl)rulPt(ev,drag.rl,p);const q=drag.it.p,l=q[q.length-1];if(Math.hypot(p[0]-l[0],p[1]-l[1])*cv.clientWidth<.7)continue;p[2]=l[2]*.6+p[2]*.4;q.push(p)}}
     if(drag.it&&!drag.hold&&!drag.hs){const pe=P(e,cv),a=drag.ap;if(!a||Math.hypot(pe[0]-a[0],pe[1]-a[1])*cv.clientWidth>4){drag.ap=pe;arm()}}
-    if(drag.mv){rd(pg);guides()}else if(drag.sc2||drag.rot)rd(pg);else if(drag.lasso&&(!drag.held||drag.shot)){if(drag.shot){const xs=drag.lasso.map(q=>q[0]),ys=drag.lasso.map(q=>q[1]),a=Math.min(...xs),b=Math.min(...ys),c=Math.max(...xs),e2=Math.max(...ys);liveLasso([[a,b],[c,b],[c,e2],[a,e2]],true)}else liveLasso(drag.lasso,drag.rect)}else if(drag.er)ring(P(e,cv));else if(drag.sp)spLive();else if(drag.it)live(drag.it);
+    if(drag.mv){rd(pg);guides()}else if(drag.sc2||drag.rot)rd(pg);else if(drag.lasso&&(!drag.held||drag.shot)){if(drag.shot){const xs=drag.lasso.map(q=>q[0]),ys=drag.lasso.map(q=>q[1]),a=Math.min(...xs),b=Math.min(...ys),c=Math.max(...xs),e2=Math.max(...ys);liveLasso([[a,b],[c,b],[c,e2],[a,e2]],true)}else liveLasso(drag.lasso,drag.rect)}else if(drag.er)ring(P(e,cv));else if(drag.sp)spLive();else if(drag.it)livePred(drag.it,e);
   }));
   const up=safe(e=>{
     if(tsPen&&(!e||e.pointerId===tsPen.id)){tsPen=null;return}
@@ -4232,7 +4302,7 @@ $('shB').onclick=()=>shareDlg();
 (function(){const st=document.createElement('style');st.textContent='.pgc.sel{border-color:var(--accent,#2f5bea)!important;background:color-mix(in srgb,var(--accent,#2f5bea) 16%,transparent)}.pgc.sel:after{content:"✓";position:absolute;top:4px;inset-inline-start:4px;width:24px;height:24px;border-radius:50%;background:var(--accent,#2f5bea);color:#fff;font-size:15px;line-height:24px;font-weight:700}';document.head.append(st)})();
 
 /* ===== أدواتي: ملف HTML بينحفظ كأداة، بيشتغل بلوحة عايمة فوق أي دفتر، وبيحكي مع التطبيق عبر جسر (postMessage) ===== */
-/* أوامر الجسر: storage.* / notify / page.info / page.readText / book.readText / page.insertImage / page.insertText / page.insertLive (الأوامر page/book بدها موافقة) */
+/* أوامر الجسر: storage.* / notify / page.info / page.readText / book.readText / page.insertImage / page.insertText / page.insertLive / book.addPages (الأوامر page/book بدها موافقة) */
 /* التخزين: nbtools = قائمة الأدوات، nbtool:<id> = كود الأداة، nbtooldata:<id> = بيانات الأداة (مفصولة لكل أداة) */
 const TQ=1.5e6,TOPEN=new Map(),hasOwn=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 let tZ=14;
@@ -4249,7 +4319,10 @@ let tZ=14;
 '.nbt .nbtr[data-d=ne]{top:0;right:0;cursor:nesw-resize}.nbt .nbtr[data-d=nw]{top:0;left:0;cursor:nwse-resize}.nbt .nbtr[data-d=sw]{bottom:0;left:0;cursor:nesw-resize}'+
 '.nbt .nbtr[data-d=se]{bottom:0;right:0;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--mute) 50%,var(--mute) 58%,transparent 58%,transparent 70%,var(--mute) 70%,var(--mute) 78%,transparent 78%);opacity:.75}'+
 '.nbt.min{height:auto!important;min-height:0}.nbt.min iframe,.nbt.min .nbtr{display:none}.nbt.max .nbtr{display:none}.nbt.max .nbth{cursor:default}'+
-'.nbt .nbsz{position:absolute;z-index:4;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(20,28,45,.82);color:#fff;font-size:12px;padding:2px 9px;border-radius:999px;pointer-events:none;display:none}';
+'.nbt .nbsz{position:absolute;z-index:4;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(20,28,45,.82);color:#fff;font-size:12px;padding:2px 9px;border-radius:999px;pointer-events:none;display:none}'+
+/* لما الأداة تنفتح بوضع التقسيم (جوا #dkPane): بتتثبّت بدل ما تعوم، بدون سحب/تكبير/تصغير */
+'.nbt.docked{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;max-height:none!important;transform:none!important;flex:1 1 auto;min-height:0;border-radius:0;box-shadow:none;border:0;margin:0;z-index:auto!important}'+
+'.nbt.docked .nbtr,.nbt.docked .nbsz,.nbt.docked .nbm,.nbt.docked .nbf{display:none!important}.nbt.docked .nbth{cursor:default;padding-top:8px}';
 document.head.append(st)})();
 
 /* --- السجل --- */
@@ -4273,7 +4346,7 @@ async function toolsMenu(){
   const l=await toolsList(),it=[];
   if(l.length){it.push('أدواتك (اضغط لتشغيلها)');l.forEach(t=>it.push(['🧩 '+t.name+(TOPEN.has(t.id)?'  ● شغّالة':''),()=>toolOpen(t.id)]))}
   else it.push('ما عندك أدوات بعد. اختر «إضافة أداة» وارفع ملف HTML.');
-  it.push('إدارة');
+  if(l.length&&window.__dockPick)it.push(['◧ تشغيل أداة بوضع التقسيم (بالجنب)',()=>window.__dockPick()]);it.push('إدارة');
   it.push(['＋ إضافة أداة من ملف HTML',()=>{htTarget='tool';htIn.click()}]);
   if(l.length)it.push(['⚙ إدارة الأدوات (اسم / بيانات / حذف)',()=>toolsManage()]);
   pick('🧩 أدواتي',it)}
@@ -4283,6 +4356,7 @@ async function toolsManage(){
 function toolOne(t){
   pick('🧩 '+t.name,[
     ['▶ تشغيل',()=>toolOpen(t.id)],
+    ...(window.__dockTool?[['◧ تشغيل بوضع التقسيم (بالجنب)',()=>window.__dockTool(t.id)]]:[]),
     ['✏️ تغيير الاسم',()=>nameIn('اسم الأداة',t.name,async nm=>{const l=await toolsList(),x=l.find(q=>q.id===t.id);if(!x)return;x.name=nm;await toolsPut(l);const r=TOPEN.get(t.id);if(r){r.name=nm;r.ttl.textContent=nm}gs('تغيّر الاسم ✓')})],
     ['🔐 صلاحيات الصفحة (قراءة / كتابة)',()=>toolPerm(t)],
     ['♻️ مسح بيانات الأداة المحفوظة',()=>pick('مسح بيانات «'+t.name+'» نهائيا؟',[['نعم، امسح البيانات',async()=>{const r=TOPEN.get(t.id);if(r){clearTimeout(r.t);r.t=0;r.dirty=0;r.data=Object.create(null)}await dbq('put','nbtooldata:'+t.id,null);if(r)toolReload(r);gs('انمسحت بيانات الأداة ✓')}]])],
@@ -4313,7 +4387,8 @@ function toolInner(){
     insertText:function(text,o){return send('page.insertText',cp(o,'text',text))},
     insertLive:function(html,o){return send('page.insertLive',cp(o,'html',html))},
     insertSelf:function(o){return send('page.insertLive',o||{})}};
-  NB.book={readText:function(o){return send('book.readText',o||{})}};
+  NB.book={readText:function(o){return send('book.readText',o||{})},
+    addPages:function(pages,o){return send('book.addPages',cp(o,'pages',pages))}};
   function str(v){return typeof v==='string'?v:JSON.stringify(v)}
   var LS={
     getItem:function(k){k=String(k);return OWN.call(D,k)?str(D[k]):null},
@@ -4348,8 +4423,8 @@ const TACT={
 
 /* --- أوامر الصفحة: قراءة/كتابة بالدفتر المفتوح. كل أداة لازم المستخدم يوافق عليها (مرة وحدة أو دايما) --- */
 /* r = قراءة نص، w = إضافة صور/نصوص. القائمة بتحدد صلاحية كل أمر */
-const TPERM={'page.info':'r','page.readText':'r','book.readText':'r','page.insertImage':'w','page.insertText':'w','page.insertLive':'w'},
-  TPDESC={r:'تقرأ نص الدفتر وصفحاته',w:'تضيف صور ونصوص على صفحة الدفتر الحالية'};
+const TPERM={'page.info':'r','page.readText':'r','book.readText':'r','page.insertImage':'w','page.insertText':'w','page.insertLive':'w','book.addPages':'w'},
+  TPDESC={r:'تقرأ نص الدفتر وصفحاته',w:'تضيف صور ونصوص وصفحات كاملة للدفتر'};
 async function tpSave(r,lv){try{const l=await toolsList(),x=l.find(q=>q.id===r.id);if(!x)return;x.perm=Object.assign({},x.perm,{[lv]:1});await toolsPut(l)}catch(e){}}
 function tpAsk(r,lv){
   if(r.pm[lv])return Promise.resolve(true);
@@ -4435,6 +4510,31 @@ async function tpLive(r,p){
   if(book.pages.length<=n0)throw new Error('live page could not be inserted');
   if(p.interact!==false){const tb=document.querySelector('#tools [data-t=tap]');if(tb)tb.click()}
   return{inserted:true,page:curPg+1}}
+/* صفحات كاملة: كل صفحة بتنضاف كصفحة حقيقية بعد الصفحة الحالية. القطعة اللي فيها lock:true بتنقفل (التصميم)، والباقي بيتحرك بأداة التحديد */
+async function tpPages(r,p){
+  tpWriteGate(r);
+  if(!book||!book.pages||!book.pages.length)throw new Error('no notebook is open');
+  const L=p.pages;if(!Array.isArray(L)||!L.length)throw new Error('pages[] required');if(L.length>60)throw new Error('too many pages (max 60)');
+  const RX=/^data:image\/(png|jpeg|jpg|webp|gif);base64,/;let tot=0;const out=[];
+  for(const q of L){
+    if(!q||typeof q!=='object')throw new Error('bad page');
+    const ar=tpNum(q.ar,1.414,1,2),tpl=typeof q.tpl==='string'&&/^(blank|dots|lined|grid|wide)$/.test(q.tpl)?q.tpl:'blank',its=[];
+    if(!Array.isArray(q.items)||q.items.length>400)throw new Error('items[] required (max 400 per page)');
+    for(const it of q.items){
+      if(!it||typeof it.src!=='string'||!RX.test(it.src))throw new Error('items need png/jpeg/webp/gif data URLs');
+      tot+=it.src.length;if(tot>6e7)throw new Error('data too large (max ~45MB)');
+      const o={k:'i',src:it.src,x:tpNum(it.x,0,-.5,1.5),y:tpNum(it.y,0,-.5,ar+.5),w:tpNum(it.w,.5,.001,1.5),h:tpNum(it.h,.2,.001,ar+.5)};
+      if(it.lock===true)o.lk=1;
+      if(typeof it.tex==='string'&&it.tex&&it.tex.length<4000)o.tex=it.tex;
+      its.push(o)}
+    const pg=newPage({tpl,ar,items:its});
+    if(typeof q.title==='string'&&q.title.trim())pg.ti=q.title.trim().slice(0,80);
+    if(typeof q.paper==='string'&&/^#[0-9a-f]{6}$/i.test(q.paper)&&q.paper.toLowerCase()!=='#ffffff')pg.pc=q.paper;else delete pg.pc;
+    out.push(pg)}
+  const at=covClamp(curPg+1);
+  book.pages.splice(at,0,...out);
+  renderBook();goPg(at);save();
+  return{inserted:true,pages:out.length,from:at+1,to:at+out.length}}
 Object.assign(TACT,{
   'page.info':(r,p)=>{const{pg,i}=tpPg(p);return{page:i+1,count:book.pages.length,notebook:book.title||'',title:pg.ti||'',template:pg.tpl||'',hasPdfBackground:!!pg.bg,hasPdfText:!!(pg.tx&&pg.tx.length),items:(pg.items||[]).length}},
   'page.readText':(r,p)=>{const{pg,i}=tpPg(p),o=tpText(pg);o.page=i+1;return o},
@@ -4445,7 +4545,8 @@ Object.assign(TACT,{
     return{count:N,pages,truncated:cut||b-a+1>300}},
   'page.insertImage':tpImg,
   'page.insertText':tpTxt,
-  'page.insertLive':tpLive});
+  'page.insertLive':tpLive,
+  'book.addPages':tpPages});
 async function toolCall(r,m){
   const reply=(ok,v)=>{try{r.fr.contentWindow.postMessage(ok?{nbToolRes:m.id,ok:true,result:v}:{nbToolRes:m.id,ok:false,error:String(v)},'*')}catch(e){}};
   if(typeof m.action!=='string'||!hasOwn(TACT,m.action))return reply(false,'action not allowed');
@@ -4469,8 +4570,8 @@ function tclamp(g,loose){const W=innerWidth,H=innerHeight;let w=Math.max(TMIN_W,
   return{x,y,w,h}}
 function tapply(r,g){r.g=g;const s=r.el.style;s.left=g.x+'px';s.top=g.y+'px';s.width=g.w+'px';s.height=g.h+'px'}
 function tsaveUI(r){clearTimeout(r.ut);r.ut=setTimeout(async()=>{try{const l=await toolsList(),x=l.find(q=>q.id===r.id);if(!x)return;x.ui={x:Math.round(r.g.x),y:Math.round(r.g.y),w:Math.round(r.g.w),h:Math.round(r.g.h)};await toolsPut(l)}catch(e){}},300)}
-async function toolOpen(id){
-  const old=TOPEN.get(id);if(old){old.el.style.zIndex=Math.min(19,++tZ);if(old.el.classList.contains('min'))old.bM.click();gs('الأداة شغّالة أصلا');return}
+async function toolOpen(id,dk){
+  const old=TOPEN.get(id);if(old&&dk)toolClose(old);else if(old){old.el.style.zIndex=Math.min(19,++tZ);if(old.el.classList.contains('min'))old.bM.click();gs('الأداة شغّالة أصلا');return}
   const l=await toolsList(),meta=l.find(t=>t.id===id);if(!meta){gs('ما لقيت الأداة');return}
   const [html,data]=await Promise.all([dbq('get','nbtool:'+id),dbq('get','nbtooldata:'+id)]);
   if(typeof html!=='string'){gs('ما لقيت ملف الأداة');return}
@@ -4478,22 +4579,22 @@ async function toolOpen(id){
   const r={id,name:meta.name,html,data:Object.assign(Object.create(null),data&&typeof data==='object'?data:{}),t:0,dirty:0,nt:0,ut:0,wt:0,g:null,sv:null,pm:Object.assign({},meta.perm&&typeof meta.perm==='object'?meta.perm:{}),pq:{}};
   const el=mk('div','panel nbt'),hd=mk('div','nbth'),ttl=mk('b','',r.name),bR=mk('button','','↺'),bM=mk('button','','▁'),bF=mk('button','','⛶'),bX=mk('button','','✕'),fr=document.createElement('iframe'),sz=mk('div','nbsz');
   [[bR,'إعادة تشغيل الأداة'],[bM,'تصغير للشريط'],[bF,'ملء الشاشة (أو دبل كليك على الشريط)'],[bX,'إغلاق']].forEach(([b,t])=>{b.title=t;b.setAttribute('aria-label',t)});
-  fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-modals allow-downloads');fr.title=r.name;
+  fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-modals allow-downloads');fr.title=r.name;bM.classList.add('nbm');bF.classList.add('nbf');
   const n=TOPEN.size,top0=tHdr()+10;
   let g0={x:10+n*24,y:top0+n*24,w:Math.min(420,innerWidth*.96),h:Math.min(520,innerHeight-top0-20)};
   if(meta.ui&&[meta.ui.x,meta.ui.y,meta.ui.w,meta.ui.h].every(Number.isFinite))g0=meta.ui;
   el.style.zIndex=Math.min(19,++tZ);
   hd.append(ttl,bR,bM,bF,bX);el.append(hd,fr,sz);
   ['n','s','e','w','ne','nw','se','sw'].forEach(d=>{const h=mk('div','nbtr');h.dataset.d=d;el.append(h)});
-  document.body.append(el);Object.assign(r,{el,fr,ttl,bM});TOPEN.set(id,r);tapply(r,tclamp(g0,true));
+  (dk&&dk.host||document.body).append(el);Object.assign(r,{el,fr,ttl,bM});TOPEN.set(id,r);if(dk)el.classList.add('docked');else tapply(r,tclamp(g0,true));
   el.addEventListener('pointerdown',()=>{el.style.zIndex=Math.min(19,++tZ)},true);
-  bX.onclick=()=>toolClose(r);bR.onclick=()=>toolReload(r);
+  bX.onclick=()=>{toolClose(r);if(dk&&dk.onClose)dk.onClose()};bR.onclick=()=>toolReload(r);
   bM.onclick=()=>{const m=el.classList.toggle('min');if(m&&el.classList.contains('max'))setMax(false);bM.textContent=m?'▭':'▁';bM.title=m?'رجّع الأداة':'تصغير للشريط'};
-  const setMax=v=>{if(v){if(el.classList.contains('min'))bM.click();r.sv=r.g;el.classList.add('max');tapply(r,{x:6,y:tHdr()+6,w:innerWidth-12,h:innerHeight-tHdr()-12})}else{el.classList.remove('max');tapply(r,tclamp(r.sv||g0,true));r.sv=null}};
+  const setMax=v=>{if(el.classList.contains('docked'))return;if(v){if(el.classList.contains('min'))bM.click();r.sv=r.g;el.classList.add('max');tapply(r,{x:6,y:tHdr()+6,w:innerWidth-12,h:innerHeight-tHdr()-12})}else{el.classList.remove('max');tapply(r,tclamp(r.sv||g0,true));r.sv=null}};
   bF.onclick=()=>setMax(!el.classList.contains('max'));
   hd.addEventListener('dblclick',e=>{if(!e.target.closest('button'))bF.click()});
   /* سحب الشريط */
-  const gesture=(h,fn)=>h.addEventListener('pointerdown',e=>{if(e.button>0||(e.target.closest&&e.target.closest('button')))return;if(el.classList.contains('max')&&h===hd)return;
+  const gesture=(h,fn)=>h.addEventListener('pointerdown',e=>{if(e.button>0||el.classList.contains('docked')||(e.target.closest&&e.target.closest('button')))return;if(el.classList.contains('max')&&h===hd)return;
     e.preventDefault();try{h.setPointerCapture(e.pointerId)}catch(_){}fr.style.pointerEvents='none';const sx=e.clientX,sy=e.clientY,b=Object.assign({},r.g);let raf=0,lx=sx,ly=sy;
     const run=()=>{raf=0;fn(lx-sx,ly-sy,b)},mv=ev=>{lx=ev.clientX;ly=ev.clientY;if(!raf)raf=requestAnimationFrame(run)},
       up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);if(raf){cancelAnimationFrame(raf);run()}fr.style.pointerEvents='';sz.style.display='none';if(!el.classList.contains('max'))tsaveUI(r)};
@@ -4516,6 +4617,8 @@ addEventListener('resize',()=>TOPEN.forEach(r=>{if(r.el.classList.contains('max'
 (function(){const T=$('tools');if(!T)return;const b=mk('button','');b.id='toolsTb';b.title='أدواتي: ملفات HTML محفوظة كأدوات';
   b.innerHTML='<span style="font-size:22px;line-height:26px;display:block">🧩</span><small>أدواتي</small>';
   b.onclick=()=>toolsMenu();const tp=T.querySelector('[data-t=tap]');if(tp)tp.after(b);else T.append(b)})();
+/* جسر لسكربت التقسيم (34_tail) لأنه خارج الـIIFE الرئيسي ومش شايف هالدوال مباشرة */
+window.__TOOLS={list:toolsList,open:toolOpen,close:toolClose,get:id=>TOPEN.get(id),toast:gs};
 /* ===== مقابض تعديل الأشكال: بتطلع تلقائيًا بعد كل شكل (مرسوم أو من قائمة الأشكال) =====
    رؤوس المضلعات بتنسحب، الدائرة/المستطيل 4 مقابض (+ زوايا)، الخط طرفينه، مقبض تدوير، وقائمة: حذف / نسخ / نمط.
    بتختفي بأول لمسة برا المقابض. التعديل كله بيرجع بالتراجع. */
@@ -5670,7 +5773,7 @@ function loadJXG(){
 let edBox=null,board=null,tool='move',buf=[],acts=[],pts=[],pcount=0,snap=true,gridObj=null,axes=null;
 const say=m=>{st.textContent=m||''};
 const toast=m=>{say(m);const t=$('toast');if(!t)return;t.textContent=m;t.style.opacity=1;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.opacity=0},2600)};
-const safe=f=>{try{return f()}catch(e){return false}};
+const safe=f=>{try{return f()}catch(e){try{window.__ERRLOG&&__ERRLOG.add('silent',e&&e.message||e,'geo safe()',e&&e.stack)}catch(_){}return false}};
 const sn=v=>Math.round(v*2)/2;
 const fmt1=n=>{const s=n.toFixed(1);return s.endsWith('.0')?s.slice(0,-2):s};
 const fmt2=n=>String(Number(n.toFixed(2)));
@@ -7272,7 +7375,7 @@ document.head.append(css);
 const pane=document.createElement('div');pane.id='dkPane';
 pane.innerHTML='<div id="dkHd"><button id="dkX" title="إغلاق التقسيم">✕</button><span id="dkT"></span><button id="dkS" title="بدّل الجهة">⇄</button></div><div id="dkBody"></div>';
 const hnd=document.createElement('div');hnd.id='dkH';root.append(pane,hnd);
-const body=pane.querySelector('#dkBody'),calc=document.getElementById('calc');let fr=null,dragging=false,kq=0;
+const body=pane.querySelector('#dkBody'),calc=document.getElementById('calc');let fr=null,dragging=false,kq=0,tr=null;
 window.__PANE_OTHER=()=>{try{return fr&&fr.contentWindow.__APP.cur()}catch(e){return null}};window.__XDIR=()=>st.side;
 const xd=document.createElement('div');xd.id='xDrop';xd.innerHTML='<span>📥 أفلت هون لنقل المحدَّد</span>';root.append(xd);
 window.__XZONE=(fromPane,x,y)=>{try{if(st.kind!=='nb'||!fr)return null;const r=fr.getBoundingClientRect(),pr=pane.getBoundingClientRect(),inR=(R,a,b)=>a>=R.left&&a<=R.right&&b>=R.top&&b<=R.bottom;
@@ -7297,15 +7400,22 @@ setInterval(paint,500);
 const kick=()=>{if(kq)return;kq=requestAnimationFrame(()=>{kq=0;try{dispatchEvent(new Event('resize'))}catch(e){}if(st.kind==='calc'&&window.__gdraw&&!document.getElementById('gg').hidden)try{window.__gdraw()}catch(e){}})};
 const clampW=w=>Math.max(300,Math.min(innerWidth-320,w));
 function setW(w){st.w=clampW(w);st.r=st.w/innerWidth;root.style.setProperty('--spw',st.w+'px');kick()}
-function apply(){root.classList.add('dk');root.classList.toggle('dkL',st.side==='L');root.classList.toggle('dkR',st.side==='R');setW(st.r?st.r*innerWidth:(st.w||Math.round(innerWidth*.45)));document.getElementById('dkT').textContent=st.kind==='calc'?'🧮 الحاسبة والاقترانات':'📓 دفتر ثاني'}
+function apply(){root.classList.add('dk');root.classList.toggle('dkL',st.side==='L');root.classList.toggle('dkR',st.side==='R');setW(st.r?st.r*innerWidth:(st.w||Math.round(innerWidth*.45)));document.getElementById('dkT').textContent=st.kind==='calc'?'🧮 الحاسبة والاقترانات':st.kind==='tool'?'🧩 '+(st.tn||'أداة'):'📓 دفتر ثاني'}
 function undock(){calc.classList.remove('docked');document.body.append(calc);calc.hidden=true}
-function close(keep){if(fr){try{fr.contentWindow.__APP.flush()}catch(e){}fr.remove();fr=null}if(calc.classList.contains('docked'))undock();st.kind=null;if(!keep){root.classList.remove('dk','dkL','dkR');root.style.removeProperty('--spw');kick()}}
+function close(keep){if(tr){const r=tr;tr=null;try{window.__TOOLS.close(r)}catch(e){}}if(fr){try{fr.contentWindow.__APP.flush()}catch(e){}fr.remove();fr=null}if(calc.classList.contains('docked'))undock();st.kind=null;if(!keep){root.classList.remove('dk','dkL','dkR');root.style.removeProperty('--spw');kick()}}
 const PBOOT="window.__PANE=1;document.documentElement.classList.add('pane');window.__PANE_OTHER=function(){try{return window.parent.__APP.cur()}catch(e){return null}}",
 PTAIL=(()=>{const a=document.getElementById('appjs');return a?[...document.scripts].filter(s=>s===a||(a.compareDocumentPosition(s)&4)).map(s=>s.outerHTML):[]})();
 function paneDoc(){if(!window.__PANE0||!PTAIL.length)return null;const h=window.__PANE0.replace(/<\/body>\s*<\/html>\s*$/i,'').replace('<head>',()=>'<head><script>'+PBOOT+'<\/script>');return '<!DOCTYPE html>'+h+PTAIL.join('\n')+'</body></html>'}
 function openNb(){close(true);const me=fr=document.createElement('iframe');me.setAttribute('allow','clipboard-read; clipboard-write');me.addEventListener('load',()=>{try{const w=me.contentWindow;w.addEventListener('pointerdown',()=>setAct('P'),true);w.addEventListener('focusin',()=>setAct('P'),true)}catch(e){}paint()});body.append(me);st.kind='nb';apply();
 let d=null;try{d=paneDoc()}catch(e){}if(d)me.srcdoc=d;else me.src=location.href.split('#')[0].split('?')[0]+'?pane=1'}
 function openCalc(){close(true);if(calc.classList.contains('mini')){const b=document.getElementById('kbub');if(b)b.click()}calc.hidden=false;calc.classList.add('docked');body.append(calc);st.kind='calc';apply()}
+/* أداة من «أدواتي» بوضع التقسيم: بتنفتح مثبّتة بلوحة الجنب (نفس جسر NB، فبتشتغل على الدفتر الرئيسي) */
+async function openTool(id){const T=window.__TOOLS;if(!T)return;let m=null;try{m=(await T.list()).find(t=>t.id===id)}catch(e){}if(!m){T.toast('ما لقيت الأداة');return}
+  close(true);st.kind='tool';st.tn=m.name;apply();
+  try{await T.open(id,{host:body,onClose:()=>{tr=null;close()}})}catch(e){}
+  tr=T.get(id)||null;if(!tr)close()}
+window.__dockTool=openTool;
+window.__dockPick=async()=>{const T=window.__TOOLS;if(!T)return;let l=[];try{l=await T.list()}catch(e){}if(!l.length){T.toast('ما عندك أدوات بعد. أضف أداة من 🧩 أدواتي');return}window.__pick('🧩 اختر أداة تشغّلها بالجنب',l.map(t=>['🧩 '+t.name,()=>openTool(t.id)]))};
 function flip(){st.side=st.side==='L'?'R':'L';sv();apply()}
 document.getElementById('dkX').onclick=()=>close();document.getElementById('dkS').onclick=flip;
 new MutationObserver(()=>{if(calc.classList.contains('docked')&&calc.hidden)calc.hidden=false}).observe(calc,{attributes:true,attributeFilter:['hidden']});
@@ -7313,7 +7423,7 @@ let dx0=0,lt=0;hnd.addEventListener('pointerdown',e=>{e.preventDefault();hnd.set
 hnd.addEventListener('pointermove',e=>{if(dragging)setW(st.side==='L'?e.clientX:innerWidth-e.clientX)});
 ['pointerup','pointercancel'].forEach(n=>hnd.addEventListener(n,e=>{if(!dragging)return;dragging=false;root.classList.remove('dkdrag');if(n==='pointerup'&&Math.abs(e.clientX-dx0)<5){const t=Date.now();if(t-lt<350){lt=0;setW(Math.round(innerWidth*.5))}else lt=t}sv();kick()}));
 addEventListener('resize',()=>{if(st.kind&&!dragging){st.w=clampW(st.r?st.r*innerWidth:st.w);root.style.setProperty('--spw',st.w+'px')}});
-const menu=()=>window.__pick('تقسيم الشاشة',[['📓 دفتر ثاني بجنب هالدفتر',openNb],['🧮 الحاسبة والاقترانات بالجنب',openCalc]].concat(st.kind?[['⇄ بدّل جهة اللوحة',flip],['✕ إغلاق التقسيم',()=>close()]]:[]));
+const menu=()=>window.__pick('تقسيم الشاشة',[['📓 دفتر ثاني بجنب هالدفتر',openNb],['🧮 الحاسبة والاقترانات بالجنب',openCalc],['🧩 أداة من أدواتي بالجنب',()=>window.__dockPick()]].concat(st.kind?[['⇄ بدّل جهة اللوحة',flip],['✕ إغلاق التقسيم',()=>close()]]:[]));
 ['splB','splB2'].forEach(i=>{const b=document.getElementById(i);if(b)b.onclick=menu});
 const kd=document.getElementById('kdk');if(kd)kd.onclick=()=>{if(st.kind==='calc')close();else openCalc()};
 })();
