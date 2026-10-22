@@ -7426,8 +7426,9 @@ function apply(){root.classList.add('dk');root.classList.toggle('dkL',st.side===
 function undock(){calc.classList.remove('docked');document.body.append(calc);calc.hidden=true}
 function close(keep){if(tr){const r=tr;tr=null;try{window.__TOOLS.close(r)}catch(e){}}if(fr){try{fr.contentWindow.__APP.flush()}catch(e){}fr.remove();fr=null}if(calc.classList.contains('docked'))undock();st.kind=null;if(!keep){root.classList.remove('dk','dkL','dkR');root.style.removeProperty('--spw');kick()}}
 const PBOOT="window.__PANE=1;document.documentElement.classList.add('pane');window.__PANE_OTHER=function(){try{return window.parent.__APP.cur()}catch(e){return null}}",
-PTAIL=(()=>{const a=document.getElementById('appjs');return a?[...document.scripts].filter(s=>s===a||(a.compareDocumentPosition(s)&4)).map(s=>s.outerHTML):[]})();
-function paneDoc(){if(!window.__PANE0||!PTAIL.length)return null;const h=window.__PANE0.replace(/<\/body>\s*<\/html>\s*$/i,'').replace('<head>',()=>'<head><script>'+PBOOT+'<\/script>');return '<!DOCTYPE html>'+h+PTAIL.join('\n')+'</body></html>'}
+/* v13.7: بتنحسب وقت فتح اللوحة مش وقت تحميل الصفحة، وإلا بتفوّت السكربتات اللي بعدها (simplifyjs) */
+ptail=()=>{const a=document.getElementById('appjs');return a?[...document.scripts].filter(s=>s===a||(a.compareDocumentPosition(s)&4)).map(s=>s.outerHTML):[]};
+function paneDoc(){const PTAIL=ptail();if(!window.__PANE0||!PTAIL.length)return null;const h=window.__PANE0.replace(/<\/body>\s*<\/html>\s*$/i,'').replace('<head>',()=>'<head><script>'+PBOOT+'<\/script>');return '<!DOCTYPE html>'+h+PTAIL.join('\n')+'</body></html>'}
 function openNb(){close(true);const me=fr=document.createElement('iframe');me.setAttribute('allow','clipboard-read; clipboard-write');me.addEventListener('load',()=>{try{const w=me.contentWindow;w.addEventListener('pointerdown',()=>setAct('P'),true);w.addEventListener('focusin',()=>setAct('P'),true)}catch(e){}paint()});body.append(me);st.kind='nb';apply();
 let d=null;try{d=paneDoc()}catch(e){}if(d)me.srcdoc=d;else me.src=location.href.split('#')[0].split('?')[0]+'?pane=1'}
 function openCalc(){close(true);if(calc.classList.contains('mini')){const b=document.getElementById('kbub');if(b)b.click()}calc.hidden=false;calc.classList.add('docked');body.append(calc);st.kind='calc';apply()}
