@@ -37,11 +37,11 @@ const add=(k,m,w,s)=>{try{
   m=String(m==null?'':m).slice(0,400);w=String(w||'');
   if(k==='error'&&/ResizeObserver loop/.test(m))return;
   const last=L[L.length-1];
-  if(last&&!last.old&&last.k===k&&last.m===m&&last.w===w){last.n=(last.n||1)+1;last.t=hhmm()}
+  if(k!=='tap'&&last&&!last.old&&last.k===k&&last.m===m&&last.w===w){last.n=(last.n||1)+1;last.t=hhmm()}
   else{L.push({t:hhmm(),k,m,w,s:String(s||'').split('\n').slice(0,6).join('\n').slice(0,700),n:1,q:++seq});
     if(k==='tap'){const taps=L.filter(x=>x.k==='tap');if(taps.length>TAPMAX)L.splice(L.indexOf(taps[0]),1)}
     else if(L.filter(x=>x.k!=='tap').length>MAX)L.splice(L.findIndex(x=>x.k!=='tap'),1)}
-  save();ui()}catch(e){}};
+  save();ui();return L[L.length-1]}catch(e){}};
 const cnt=()=>L.filter(x=>!x.old&&(x.k==='error'||x.k==='promise'||x.k==='handler'||x.k==='console')).reduce((a,x)=>a+(x.n||1),0);
 const LBL={error:'خطأ',promise:'وعد مرفوض',handler:'خطأ بمعالج القلم/اللمس',console:'console.error',silent:'خطأ صامت (ما بيظهر للمستخدم)',tap:'لمسة'};
 const fmt=x=>'['+x.t+'] '+(LBL[x.k]||x.k)+(x.n>1?' ×'+x.n:'')+(x.old?' (جلسة سابقة)':'')+'\n'+x.m+(x.w?'\n@ '+x.w:'')+(x.s?'\n'+x.s:'');
@@ -54,7 +54,8 @@ const render=()=>{if(!list)return;list.textContent='';
 const copy=async()=>{const txt=head()+'\n\n'+L.slice().sort((a,b)=>b.q-a.q).map(fmt).join('\n\n');
   try{await navigator.clipboard.writeText(txt);return true}catch(e){}
   try{const t=document.createElement('textarea');t.value=txt;t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();const ok=document.execCommand('copy');t.remove();return ok}catch(e){return false}};
-const dn=n=>{if(!n||!n.tagName)return String(n);let s=n.tagName.toLowerCase()+(n.id?'#'+n.id:'');try{if(typeof n.className==='string'&&n.className.trim())s+='.'+n.className.trim().split(/\s+/).slice(0,2).join('.');if(n.disabled)s+=' [disabled]';if(getComputedStyle(n).pointerEvents==='none')s+=' [pe:none]'}catch(e){}return s};
+const tx=n=>{try{const b=n.closest&&n.closest('button,a,[role=button],label,summary');if(!b)return'';const s=((b.textContent||'').trim().replace(/\s+/g,' ')||b.title||'').slice(0,18);return s?' "'+s+'"':''}catch(e){return''}};
+const dn=n=>{if(!n||!n.tagName)return String(n);let s=n.tagName.toLowerCase()+(n.id?'#'+n.id:'')+tx(n);try{if(typeof n.className==='string'&&n.className.trim())s+='.'+n.className.trim().split(/\s+/).slice(0,2).join('.');if(n.disabled)s+=' [disabled]';if(getComputedStyle(n).pointerEvents==='none')s+=' [pe:none]'}catch(e){}return s};
 const build=()=>{
   const st=document.createElement('style');st.textContent=
   '#elb{position:fixed;z-index:2147483000;right:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);min-width:34px;height:34px;padding:0 10px;border-radius:17px;border:0;font:600 13px system-ui,sans-serif;background:rgba(60,60,67,.55);color:#fff;opacity:.5;touch-action:manipulation}'+
@@ -84,7 +85,10 @@ const ce=console.error;console.error=function(){try{add('console',[].map.call(ar
 const inUI=t=>t&&t.closest&&t.closest('#elp,#elb');
 document.addEventListener('pointerdown',e=>{if(!trace||inUI(e.target))return;let top=null;try{top=document.elementFromPoint(e.clientX,e.clientY)}catch(_){}
   add('tap',e.pointerType+' @'+Math.round(e.clientX)+','+Math.round(e.clientY),'target='+dn(e.target)+(top!==e.target?'  top='+dn(top):''))},true);
-document.addEventListener('click',e=>{if(!trace||inUI(e.target))return;add('tap','click','target='+dn(e.target))},true);
+const watch=en=>{if(!en)return;let c=0;const mo=new MutationObserver(rs=>{rs.forEach(r=>{const t=r.target.nodeType===1?r.target:r.target.parentElement;if(!(t&&t.closest&&t.closest('#elp,#elb')))c++})});
+  mo.observe(document.body,{subtree:true,childList:true,attributes:true,characterData:true});
+  setTimeout(()=>{mo.disconnect();en.w=(en.w||'')+'\n→ بعد 0.45 ثانية: '+(c?'الصفحة تغيّرت ('+c+' تعديل)':'ولا تغيير بالصفحة (الزر ما عمل شي ظاهر)');save();ui()},450)};
+document.addEventListener('click',e=>{if(!trace||inUI(e.target))return;watch(add('tap','click','target='+dn(e.target)))},true);
 window.__ERRLOG={add,get list(){return L}};
 })();
 </script>
@@ -7318,7 +7322,7 @@ const grp=document.createElement('div');grp.id='geoGrp';
 Object.keys(GN).forEach(k=>{gb[k]=mk(GN[k],'',()=>show(k));grp.append(gb[k])});
 tb.prepend(grp);
 function show(g){cur=g;tools.forEach(x=>x.b.classList.toggle('gh',x.g!==g));Object.keys(gb).forEach(k=>gb[k].classList.toggle('on',k===g))}
-tools.forEach(x=>new MutationObserver(()=>{if(x.b.classList.contains('on')&&x.g!==cur)show(x.g)}).observe(x.b,{attributes:true,attributeFilter:['class']}));
+tools.forEach(x=>{x.was=x.b.classList.contains('on');new MutationObserver(()=>{const on=x.b.classList.contains('on');if(on&&!x.was&&x.g!==cur)show(x.g);x.was=on}).observe(x.b,{attributes:true,attributeFilter:['class']})});
 show('d');
 /* --- الصف السفلي: عرض + المزيد --- */
 const byTxt=t=>[...ac.children].find(b=>b.textContent.trim()===t);
