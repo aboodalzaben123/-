@@ -913,6 +913,8 @@ function createCalc(init){
 const bsig=(css,js)=>{let x=2166136261,n=0;for(const e of [css,js]){const t=e?e.textContent:'';for(let i=0;i<t.length;i++)x=Math.imul(x^t.charCodeAt(i),16777619);n+=t.length}return(x>>>0).toString(36)+'.'+n};
 const BUILD0=(()=>{try{return bsig(document.getElementById('appcss'),document.getElementById('appjs'))}catch(e){return''}})();
 const $=id=>document.getElementById(id),uid=()=>Math.random().toString(36).slice(2,9);
+/* نوع المدخل بمكان واحد: 'pen' | 'touch' | 'mouse' (لأحداث pointer وأحداث touch). الأدوات الجديدة تستخدمه بدل ما كل وحدة تكشف لحالها */
+const inKind=(e,t)=>{if(e&&e.pointerType)return e.pointerType==='pen'?'pen':e.pointerType==='touch'?'touch':'mouse';t=t||(e&&e.changedTouches&&e.changedTouches[0]);return t&&t.touchType==='stylus'?'pen':'touch'};
 const mk=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const idb=new Promise(r=>{try{const q=indexedDB.open('gnb',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
 const dbq=window.__PANE?((m,k,v)=>window.parent.__APP.dbq(m,k,v)):async(m,k,v)=>{const d=await idb;if(!d)return null;return new Promise(r=>{try{const tx=d.transaction('k',m==='get'?'readonly':'readwrite'),s=tx.objectStore('k'),q=m==='get'?s.get(k):s.put(v,k);if(m==='get'){q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}else{let kk=null;q.onsuccess=()=>{kk=q.result};tx.oncomplete=()=>r(kk);tx.onabort=()=>{try{window.__svFail&&window.__svFail(tx.error)}catch(e){}r(null)}}}catch(e){if(m!=='get')try{window.__svFail&&window.__svFail(e)}catch(_){}r(null)}})};
@@ -4149,12 +4151,12 @@ let GD=null;
 const gHit=(cx,cy)=>{let res=null;DOM.forEach(d=>{if(res||!d.gl)return;d.gl.forEach(o=>{if(res||!o.hdl||!o.hdl.length||o.fr.style.visibility!=='visible')return;const r=o.fr.getBoundingClientRect();if(!r.width||cx<r.left||cx>r.right||cy<r.top||cy>r.bottom)return;const sx=o.fr.offsetWidth/r.width,lx=(cx-r.left)*sx,ly=(cy-r.top)*(o.fr.offsetHeight/r.height);let bi=-1,bd=(30*sx)**2;o.hdl.forEach((h,i)=>{const q=(h[0]-lx)**2+(h[1]-ly)**2;if(q<bd){bd=q;bi=i}});if(bi>=0)res={o,i:bi}})});return res};
 const gSend=(g,ph,cx,cy)=>{try{const r=g.o.fr.getBoundingClientRect();g.o.fr.contentWindow.postMessage({t:'geo-drag',ph,i:g.i,x:cx==null?0:(cx-r.left)*g.o.fr.offsetWidth/r.width,y:cx==null?0:(cy-r.top)*g.o.fr.offsetHeight/r.height},'*')}catch(_){}};
 const gStart=(e,cx,cy)=>{if(tool!=='tap')return false;const g=gHit(cx,cy);if(!g)return false;GD=g;e.preventDefault();e.stopPropagation();gSend(g,'start',cx,cy);return true};
-document.addEventListener('touchstart',e=>{if(GD||e.touches.length!==1)return;const t=e.changedTouches[0];if(gStart(e,t.clientX,t.clientY))GD.tid=t.identifier},{capture:true,passive:false});
+document.addEventListener('touchstart',e=>{if(GD||e.touches.length!==1)return;const t=e.changedTouches[0];if(inKind(e,t)!=='pen')return; /* الإصبع للتمرير فقط: مقابض الرسم الحي بالقلم بس */if(gStart(e,t.clientX,t.clientY))GD.tid=t.identifier},{capture:true,passive:false});
 document.addEventListener('touchmove',e=>{if(!GD||GD.tid==null)return;const t=[...e.changedTouches].find(q=>q.identifier===GD.tid);if(!t)return;e.preventDefault();e.stopPropagation();gSend(GD,'move',t.clientX,t.clientY)},{capture:true,passive:false});
 ['touchend','touchcancel'].forEach(n=>document.addEventListener(n,e=>{if(!GD||GD.tid==null)return;if(![...e.changedTouches].some(q=>q.identifier===GD.tid))return;gSend(GD,'end');GD=null},true));
-document.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||GD)return;if(gStart(e,e.clientX,e.clientY))GD.tid=null},true);
+document.addEventListener('pointerdown',e=>{if(inKind(e)==='touch'||GD)return;if(gStart(e,e.clientX,e.clientY))GD.tid=null},true);
 document.addEventListener('pointermove',e=>{if(GD&&GD.tid==null)gSend(GD,'move',e.clientX,e.clientY)},true);
-['pointerup','pointercancel'].forEach(n=>document.addEventListener(n,e=>{if(GD&&GD.tid==null&&e.pointerType==='mouse'){gSend(GD,'end');GD=null}},true));
+['pointerup','pointercancel'].forEach(n=>document.addEventListener(n,e=>{if(GD&&GD.tid==null&&inKind(e)!=='touch'){gSend(GD,'end');GD=null}},true));
 window.addEventListener('message',e=>{if(!e.data||e.data.t!=='geo-dirty')return;DOM.forEach(d=>{if(d.gl)d.gl.forEach(o=>{if(o.fr.contentWindow===e.source)o.dirty=!!e.data.dirty})})});
 /* بناء الحالة الجديدة (نموذج + صورة + مكانها) بعد تعديل الرسم الحي، بحيث الصورة تضل مطابقة لمكانها */
 function geoNext(it,r,useSt){
