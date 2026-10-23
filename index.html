@@ -7427,7 +7427,8 @@ function undock(){calc.classList.remove('docked');document.body.append(calc);cal
 function close(keep){if(tr){const r=tr;tr=null;try{window.__TOOLS.close(r)}catch(e){}}if(fr){try{fr.contentWindow.__APP.flush()}catch(e){}fr.remove();fr=null}if(calc.classList.contains('docked'))undock();st.kind=null;if(!keep){root.classList.remove('dk','dkL','dkR');root.style.removeProperty('--spw');kick()}}
 const PBOOT="window.__PANE=1;document.documentElement.classList.add('pane');window.__PANE_OTHER=function(){try{return window.parent.__APP.cur()}catch(e){return null}}",
 /* v13.7: بتنحسب وقت فتح اللوحة مش وقت تحميل الصفحة، وإلا بتفوّت السكربتات اللي بعدها (simplifyjs) */
-ptail=()=>{const a=document.getElementById('appjs');return a?[...document.scripts].filter(s=>s===a||(a.compareDocumentPosition(s)&4)).map(s=>s.outerHTML):[]};
+/* v13.8: كمان وسوم <style> اللي بعد appjs (مثلاً ستايل تابات الهندسة بجزء 33b)، وإلا اللوحة الثانية بتفوّتها وبتطلع قائمة الهندسة قديمة */
+ptail=()=>{const a=document.getElementById('appjs');return a?[...document.querySelectorAll('script,style')].filter(s=>s===a||(a.compareDocumentPosition(s)&4)).map(s=>s.outerHTML):[]};
 function paneDoc(){const PTAIL=ptail();if(!window.__PANE0||!PTAIL.length)return null;const h=window.__PANE0.replace(/<\/body>\s*<\/html>\s*$/i,'').replace('<head>',()=>'<head><script>'+PBOOT+'<\/script>');return '<!DOCTYPE html>'+h+PTAIL.join('\n')+'</body></html>'}
 function openNb(){close(true);const me=fr=document.createElement('iframe');me.setAttribute('allow','clipboard-read; clipboard-write');me.addEventListener('load',()=>{try{const w=me.contentWindow;w.addEventListener('pointerdown',()=>setAct('P'),true);w.addEventListener('focusin',()=>setAct('P'),true)}catch(e){}paint()});body.append(me);st.kind='nb';apply();
 let d=null;try{d=paneDoc()}catch(e){}if(d)me.srcdoc=d;else me.src=location.href.split('#')[0].split('?')[0]+'?pane=1'}
