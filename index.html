@@ -1541,16 +1541,23 @@ py:[['c',/#.*/],['s',/"{3}[\s\S]*?(?:"{3}|$)|'{3}[\s\S]*?(?:'{3}|$)|"(?:\\.|[^"\
 js:[['c',/\/\/.*|\/\*[\s\S]*?(?:\*\/|$)/],['s',/`(?:\\.|[^`\\])*`?|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?/],['n',/\b\d+\.?\d*(?:e[+-]?\d+)?\b/i],['k',/\b(?:const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|import|export|from|default|try|catch|finally|throw|async|await|typeof|instanceof|in|of|null|undefined|true|false|this)\b/],['f',/\b(?:console|Math|JSON|Object|Array|String|Number|Promise|document|window)\b/]]};
 function codeTok(v,L){const R=CR[L]||[],re=new RegExp(R.map(r=>'('+r[1].source+')').join('|')||'$^','g'),o=[];let i=0,m;v=String(v).replace(/\t/g,'  ');while(R.length&&(m=re.exec(v))){if(!m[0]){re.lastIndex++;continue}if(m.index>i)o.push([v.slice(i,m.index),'']);let k=0;while(m[k+1]===undefined)k++;o.push([m[0],R[k][0]]);i=re.lastIndex}if(i<v.length)o.push([v.slice(i),'']);return o}
 function drawCode(g,it,u,cw){const fs=it.s*u,lh=fs*1.3,W=fs*.6,x0=it.x*cw,y0=it.y*cw,q=txs(it),pd=fs*.45;g.fillStyle='#f6f8fa';g.strokeStyle='#d0d7de';g.lineWidth=Math.max(1,u);g.beginPath();if(g.roundRect)g.roundRect(x0-pd,y0-pd*.6,q[0]*W+pd*2,q[1]*lh+pd*1.2,fs*.4);else g.rect(x0-pd,y0-pd*.6,q[0]*W+pd*2,q[1]*lh+pd*1.2);g.fill();g.stroke();g.font=fs+'px ui-monospace,Menlo,Consolas,monospace';g.textBaseline='top';g.direction='ltr';g.textAlign='left';let r=0,c=0;codeTok(it.v,it.L).forEach(([t,k])=>{g.fillStyle=k?CC[k]:it.c;t.split('\n').forEach((l,j)=>{if(j){r++;c=0}if(l){g.fillText(l,x0+c*W,y0+r*lh);c+=l.length}})})}
-let _py;function loadPy(st){if(_py)return _py;_py=new Promise((ok,no)=>{st.textContent='⏳ تحميل بايثون لأول مرة…';
-  /* v13.9: indexURL صريح (Pyodide بيخمّنه من مكان السكربت وبيغلط بسفاري فبيجيب مكتبة بايثون الأساسية غلط: "no codec search functions registered") */
-  const B='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',sc=document.createElement('script');let tm=0;
-  const fail=m=>{clearTimeout(tm);no(new Error(m))};
-  sc.src=B+'pyodide.js';
-  sc.onload=()=>{if(typeof WebAssembly!=='object'){fail('بايثون ما اشتغل: هالمتصفح ما بيدعم WebAssembly. احفظ الملف وافتحه بـ Safari مباشرة (من تطبيق الملفات).');return}
-    loadPyodide({indexURL:B}).then(p=>{clearTimeout(tm);ok(p)},e=>fail('تعذّر تشغيل بايثون: '+String(e&&e.message||e).split('\n')[0].slice(0,160)))};
-  tm=setTimeout(()=>fail('تحميل بايثون أخد وقت طويل. تأكد من النت وجرّب مرة ثانية.'),120000);
-  sc.onerror=()=>fail('ما قدرت أحمّل Pyodide. تأكد من الإنترنت، أو إنه العارض بيسمح بالسكربتات الخارجية.');
-  document.head.append(sc)});_py.catch(()=>{_py=null});return _py}
+let _py;function loadPy(st){if(_py)return _py;
+  /* v13.10: بيجرّب Pyodide 0.28.2 وبعدين 0.26.4 (0.26.4 لحاله فشل بسفاري 26.5: "no codec search functions registered"). indexURL صريح، وبيسجّل حالة python_stdlib.zip بسجل الأخطاء 🐞 */
+  const VS=['0.28.2','0.26.4'],ER=(k,m)=>{const e=new Error(m);e.k=k;return e};
+  const tryV=v=>new Promise((ok,no)=>{const B='https://cdn.jsdelivr.net/pyodide/v'+v+'/full/',sc=document.createElement('script');let tm=0;
+    const fail=e=>{clearTimeout(tm);no(e)};
+    sc.src=B+'pyodide.js';
+    sc.onload=()=>{if(typeof WebAssembly!=='object'){fail(ER('wasm','بايثون ما اشتغل: هالمتصفح ما بيدعم WebAssembly. احفظ الملف وافتحه بـ Safari مباشرة (من تطبيق الملفات).'));return}
+      loadPyodide({indexURL:B}).then(p=>{clearTimeout(tm);ok(p)},e=>{
+        try{fetch(B+'python_stdlib.zip').then(r=>r.arrayBuffer().then(x=>console.error('[pyodide '+v+'] python_stdlib.zip: HTTP '+r.status+', '+x.byteLength+' bytes'))).catch(x=>console.error('[pyodide '+v+'] python_stdlib.zip fetch failed: '+x))}catch(x){}
+        fail(ER('init','تعذّر تشغيل بايثون: '+String(e&&e.message||e).split('\n')[0].slice(0,160)))})};
+    tm=setTimeout(()=>fail(ER('slow','تحميل بايثون أخد وقت طويل. تأكد من النت وجرّب مرة ثانية.')),120000);
+    sc.onerror=()=>fail(ER('load','ما قدرت أحمّل Pyodide. تأكد من الإنترنت، أو إنه العارض بيسمح بالسكربتات الخارجية.'));
+    document.head.append(sc)});
+  _py=(async()=>{st.textContent='⏳ تحميل بايثون لأول مرة…';let last;
+    for(const v of VS){try{return await tryV(v)}catch(e){last=e;if(e.k==='wasm'||e.k==='load'||e.k==='slow')break;st.textContent='⏳ جرّب نسخة ثانية من بايثون…'}}
+    throw last})();
+  _py.catch(()=>{_py=null});return _py}
 let _alg;function loadAlg(st){if(window.Algebrite)return Promise.resolve(window.Algebrite);if(_alg)return _alg;_alg=new Promise((ok,no)=>{st.textContent='⏳ تحميل محرك الجبر…';const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/algebrite@1.4.0/dist/algebrite.bundle-for-browser.js';sc.onload=()=>window.Algebrite?ok(window.Algebrite):no(new Error('x'));sc.onerror=()=>no(new Error('x'));document.head.append(sc);setTimeout(()=>no(new Error('x')),15000)});_alg.catch(()=>{_alg=null});return _alg}
 let _mj;function loadMJ(st){if(window.MathJax&&MathJax.tex2svg)return MathJax.startup.promise.then(()=>MathJax);if(_mj)return _mj;
   /* أوفلاين: أول مرة بينزّل MathJax من النت وبيخزّنه بالجهاز (IndexedDB)، وبعدها بيشتغل بدون نت */
