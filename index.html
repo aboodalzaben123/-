@@ -3064,7 +3064,7 @@ function tselDone(d,cv,pts){
   tsRange=null;tsA=null;tsCus=pcs;tsDraw();if(TSDA){tsDel();return}tsBarShow()}
 document.querySelectorAll('#tsm [data-tm]').forEach(b=>b.onclick=()=>{TSM=b.dataset.tm;document.querySelectorAll('#tsm [data-tm]').forEach(x=>x.classList.toggle('on',x===b));gs(TSM==='rect'?'تحديد نص: اسحب مستطيل حوالين النص':'تحديد نص: ارسم حلقة حوالين النص')});
 /* ---------- حذف النص المحدّد من الـ PDF ---------- */
-let TSDA=false,TSMV=false;
+let TSDA=false,TSMV=false,TSTR=true;
 const TS_MK=/^[\s\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0300-\u036F\uFE70-\uFE7F]+$/;
 function tsBgCol(pg,rs){
   try{const im=IMG[pg.bg],iw=im&&(im.naturalWidth||im.width);if(!iw)return'#ffffff';
@@ -3132,7 +3132,7 @@ function tsMove(d,pts){const pg=d.pg;if(!pts||pts.length<3)return;
   if(x1-x0<.01||y1-y0<.01)return;
   const im=IMG[pg.bg],iw=im&&(im.naturalWidth||im.width);if(!iw){gs('الصفحة لسا عم تتحمّل، جرّب كمان مرة');return}
   let k=iw,w=Math.round((x1-x0)*k),h=Math.round((y1-y0)*k);if(w*h>3e6){const f=Math.sqrt(3e6/(w*h));k*=f;w=Math.round(w*f);h=Math.round(h*f)}
-  const col=tsBgCol(pg,[{x0,x1,y0,y1}]);let src;try{const cv=document.createElement('canvas');cv.width=Math.max(4,w);cv.height=Math.max(4,h);const c2=cv.getContext('2d'),sx=cv.width/(x1-x0),sy=cv.height/(y1-y0);c2.beginPath();pts.forEach((q,i)=>{const X=(q[0]-x0)*sx,Y=(q[1]-y0)*sy;if(i)c2.lineTo(X,Y);else c2.moveTo(X,Y)});c2.closePath();c2.clip();c2.drawImage(im,x0*iw,y0*iw,(x1-x0)*iw,(y1-y0)*iw,0,0,cv.width,cv.height);try{tsAlpha(c2,cv.width,cv.height,col)}catch(e){}src=cv.toDataURL('image/png')}catch(e){gs('تعذّر قصّ المنطقة');return}
+  const col=tsBgCol(pg,[{x0,x1,y0,y1}]);let src;try{const cv=document.createElement('canvas');cv.width=Math.max(4,w);cv.height=Math.max(4,h);const c2=cv.getContext('2d'),sx=cv.width/(x1-x0),sy=cv.height/(y1-y0);c2.beginPath();pts.forEach((q,i)=>{const X=(q[0]-x0)*sx,Y=(q[1]-y0)*sy;if(i)c2.lineTo(X,Y);else c2.moveTo(X,Y)});c2.closePath();c2.clip();c2.drawImage(im,x0*iw,y0*iw,(x1-x0)*iw,(y1-y0)*iw,0,0,cv.width,cv.height);if(TSTR)try{tsAlpha(c2,cv.width,cv.height,col)}catch(e){}src=cv.toDataURL('image/png')}catch(e){gs('تعذّر قصّ المنطقة');return}
   const wo={k:'s',c:col,w:1,p:[[x0,y0,.5],[x1,y1,.5]],a:1,pl:pts.map(q=>[q[0],q[1]]),lk:1,wo:1},
     img={k:'i',src,x:x0,y:y0,w:x1-x0,h:y1-y0};
   const old=pg.tx||[],nw=old.filter(q=>!inPoly(q[1]+q[3]/2,q[2]+q[4]/2,pts));
@@ -3143,10 +3143,12 @@ function tsMove(d,pts){const pg=d.pg;if(!pts||pts.length<3)return;
   gs('✋ صارت قطعة: حرّكها أو كبّرها أو دوّرها (تراجع متاح). كتابتك بالقلم بتضل مكانها')}
 (()=>{const row=document.querySelector('#tsm .row');if(!row)return;
   const mk2=(t,ti)=>{const b=document.createElement('button');b.textContent=t;b.title=ti;row.append(b);return b},
-    bd=mk2('🗑 حذف تلقائي','أي شي بتحيطه بالحلقة أو المربع (نص أو رسوم) بينمسح فوراً'),bm=mk2('✋ تحريك','أي شي بتحيطه بالحلقة أو المربع (نص أو رسوم) بيصير قطعة بتحركها');
-  const sy=()=>{bd.classList.toggle('on',TSDA);bm.classList.toggle('on',TSMV)};
+    bd=mk2('🗑 حذف تلقائي','أي شي بتحيطه بالحلقة أو المربع (نص أو رسوم) بينمسح فوراً'),bm=mk2('✋ تحريك','أي شي بتحيطه بالحلقة أو المربع (نص أو رسوم) بيصير قطعة بتحركها'),
+    bt=mk2('🎨 خلفية شفافة','خلفية القطعة المنقولة: شفافة (بيبين النص أو الرسم بس) أو مع خلفيتها الأصلية (قص حرفي من الصفحة)');
+  const sy=()=>{bd.classList.toggle('on',TSDA);bm.classList.toggle('on',TSMV);bt.style.display=TSMV?'':'none';bt.textContent=TSTR?'🎨 خلفية شفافة':'🖼 مع الخلفية'};
   bd.onclick=()=>{TSDA=!TSDA;if(TSDA)TSMV=false;sy();gs(TSDA?'حذف تلقائي شغّال: أي شي بتحيطه بالحلقة/المربع (نص أو رسوم) بينمسح فوراً (التراجع متاح)':'حذف تلقائي مطفي: التحديد بيطلّع شريط الأزرار')};
-  bm.onclick=()=>{TSMV=!TSMV;if(TSMV)TSDA=false;sy();gs(TSMV?'تحريك شغّال: أحيط أي منطقة (نص أو رسوم) بحلقة أو مربع وبتصير قطعة بتحركها وتكبّرها وتدوّرها':'تحريك مطفي: التحديد بيطلّع شريط الأزرار')}})();
+  bm.onclick=()=>{TSMV=!TSMV;if(TSMV)TSDA=false;sy();gs(TSMV?'تحريك شغّال: أحيط أي منطقة (نص أو رسوم) بحلقة أو مربع وبتصير قطعة بتحركها وتكبّرها وتدوّرها':'تحريك مطفي: التحديد بيطلّع شريط الأزرار')};
+  bt.onclick=()=>{TSTR=!TSTR;sy();gs(TSTR?'القطعة المنقولة: خلفية شفافة (بيبين النص أو الرسم بس)':'القطعة المنقولة: مع خلفيتها الأصلية (قص حرفي من الصفحة)')};sy()})();
 function tsBind(tl){}
 function fingerSel(d,sc,x,y){if(!d.pg.tx||!d.pg.tx.length)return false;if(!TS)tsOn(true);tsBuild(d);if(!d.tl)return false;const a=tsPoint(d.tl,x,y);if(!a)return false;
   sc.sel=1;tsA=a;tsSel(a,a);tsBarShow();return true}
@@ -5621,7 +5623,7 @@ const DATA=[
  {k:'lsMore',n:'⋯ المزيد',t:'خيارات إضافية للتحديد: قص، أمام / خلف، قلب أفقي / عمودي، قفل، عكس التحديد، لصق.'},
  {k:'lsCut lsFront lsBack lsFH lsFV lsLock lsInv lsCm lsUnl',n:'⋯ خيارات المزيد',t:'✂ قص. ⬆ أمام / ⬇ خلف: ترتيب العناصر فوق بعض. ⇋ قلب أفقي، ⇅ قلب عمودي. 🔒 قفل: بيثبّت العنصر عشان ما يتحرّك. ⇄ عكس: بيحدّد كل اللي مش محدّد. ◎ المركز: بيظهر أو بيخفي مركز الشكل. فك القفل: من خيارات التحديد.'},
  {k:'lsX',n:'✕ إغلاق التحديد',t:'بيلغي التحديد.'},
- {k:'t:tsel',n:'📝 تحديد نص',t:'بيحدّد نص صفحات الـ PDF أو الـ HTML بس: ارسم حلقة حوالين النص اللي بدك ياه (ما بيمسك أي شي ثاني). بعدها بتقدر تظلّل النص أو تحذفه. بتختار حلقة حرة أو مربع.'},
+ {k:'t:tsel',n:'📝 تحديد نص',t:'بيحدّد نص صفحات الـ PDF أو الـ HTML بس: ارسم حلقة حوالين النص اللي بدك ياه (ما بيمسك أي شي ثاني). بعدها بتقدر تظلّل النص أو تحذفه. بتختار حلقة حرة أو مربع. وزر ✋ تحريك بيحوّل اللي بتحيطه (نص أو رسوم) لقطعة بتحركها، ولما يكون شغّال بيظهر زر 🎨/🖼 بيبدّل القطعة بين خلفية شفافة ومع خلفيتها الأصلية.'},
  {k:'hm:free hm:rect hm:round',n:'🟨 شكل التظليل',t:'حر: تظليل بالإيد. مستطيل: اسحب من زاوية للزاوية المقابلة وتتحكّم بالأبعاد. مقوّس: نفس المستطيل بس حوافه بقوس خفيف. بتقدر تحرّكه وتكبّره بعدين من أداة التحديد.'},
  {k:'tm:free tm:rect',n:'📝 شكل تحديد النص',t:'حلقة حرة: ارسم دايرة حوالين النص. مربع: اسحب مستطيل حوالين النص.'},
  {k:'x:capture',n:'📸 لقطة للمنطقة',t:'بأداة التحديد: ضغطة مطوّلة ثم سحب = لقطة للمنطقة. بتنحط صورة بتقدر تحرّكها، تكبّرها، وتدوّرها.'}
