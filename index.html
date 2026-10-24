@@ -5319,9 +5319,11 @@ $('lsInk').onclick=()=>pick('حوّل الرسمة لحبر عادي',[['است�
 function clipImg(){try{if(!ls||!navigator.clipboard||!window.ClipboardItem)return false;const x=lbox(ls.items);if(!x)return false;const c=capShot(ls.pg,[x[0]-.01,x[1]-.01,x[0]+x[2]+.01,x[1]+x[3]+.01]);const pr=new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('x')),'image/png'));navigator.clipboard.write([new ClipboardItem({'image/png':pr})]).catch(()=>{});return true}catch(e){return false}}
 function clipCopy(quiet){if(!ls||!ls.items.length)return false;CLIP={src:ls.pg,items:ls.items.map(i=>JSON.parse(JSON.stringify(i))),n:0};const im=clipImg();lsInfo();if(!quiet)gs(im?'انحفظ ✓ بينلصق بالدفتر كعناصر، وبأي تطبيق ثاني كصورة':'انحفظ بالحافظة ✓ اضغط 📥 لصق بأي صفحة');return true}
 function clipCut(){if(clipCopy(true)){const n=ls.items.length;delSel();gs('انقص '+AR_N(n)+' ✓ روح لأي صفحة واضغط 📥 لصق')}}
-function clipPaste(){if(!CLIP||!book)return;const pg=book.pages[curPg];if(!pg)return;
-  CLIP.n++;const cl=CLIP.items.map(i=>JSON.parse(JSON.stringify(i)));let dx=0,dy=0;if(CLIP.src===pg)dx=dy=.03*CLIP.n;
-  const b=lbox(cl);if(b){const r=b[0]+dx+b[2],bt=b[1]+dy+b[3];if(r>1)dx-=r-1+.01;if(b[0]+dx<0)dx=-b[0]+.01;if(bt>pg.ar)dy-=bt-pg.ar+.01;if(b[1]+dy<0)dy=-b[1]+.01}
+function clipPaste(at){if(!CLIP||!book)return;const pg=book.pages[curPg];if(!pg)return;
+  CLIP.n++;const cl=CLIP.items.map(i=>JSON.parse(JSON.stringify(i)));let dx=0,dy=0;const b=lbox(cl);
+  /* at=[x,y] نقطة الصفحة اللي ضغطت عليها (من قائمة الضغطة الطويلة): بيتحط وسط المنسوخ عليها. بدونها: نفس المكان (+ إزاحة صغيرة لو بنفس الصفحة) */
+  if(Array.isArray(at)&&at.length>=2&&b){dx=at[0]-(b[0]+b[2]/2);dy=at[1]-(b[1]+b[3]/2)}else if(CLIP.src===pg)dx=dy=.03*CLIP.n;
+  if(b){const r=b[0]+dx+b[2],bt=b[1]+dy+b[3];if(r>1)dx-=r-1+.01;if(b[0]+dx<0)dx=-b[0]+.01;if(bt>pg.ar)dy-=bt-pg.ar+.01;if(b[1]+dy<0)dy=-b[1]+.01}
   if(dx||dy)cl.forEach(c=>moveItem(c,dx,dy));pg.items.push(...cl);
   undo.push({pg,u:()=>cl.forEach(c=>{const i=pg.items.indexOf(c);if(i>=0)pg.items.splice(i,1)}),r:()=>pg.items.push(...cl)});redo=[];
   lsTool();setLs({pg,items:cl});if(cl.length===1&&cl[0].k==='g')openGraph(cl[0],pg);else unbindG();save();gs('انلصق ✓')}
@@ -5535,7 +5537,7 @@ function pasteMenu(cx,cy,d,p,sel){
     curPg=book.pages.indexOf(d.pg);if(v)v=stackFrac(v);if(v&&texLooks(v)){texInsert(d,p,v);return}txt(d,p);const ta=d.el.querySelector('textarea.ti');
     if(v&&ta){ta.value=ta.value?ta.value+'\n'+v:v;ta.dispatchEvent(new Event('input'));ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}
     else gs('ما قدرت أقرا نص من الحافظة. اضغط مطولاً جوّا الخانة واختار لصق')});
-    if(CLIP)add('📥 لصق العناصر المنسوخة',clipPaste)}
+    if(CLIP)add('📥 لصق العناصر المنسوخة',()=>{curPg=book.pages.indexOf(d.pg);clipPaste(p)})}
   document.body.append(m);const mh=m.offsetHeight;m.style.left=Math.max(8,Math.min(__bw()-178,cx-__bl()-85))+'px';m.style.top=Math.max(8,Math.min(innerHeight-mh-8,cy>mh+40?cy-mh-20:cy+30))+'px';setTimeout(()=>document.addEventListener('pointerdown',away,true),0)}
 /* ضغطة ع مكان فاضي برا الصفحات = إلغاء التحديد */
 view.addEventListener('pointerdown',e=>{if(tool!=='lasso'||!ls)return;const t=e.target;if(t&&t.closest&&t.closest('canvas,button,input,textarea,#lsbar,#lsm,#dlg,.panel,#capB,#pgs'))return;setLs(null);unbindG();capHide()});
@@ -5556,9 +5558,9 @@ async function normBlob(bl){const toPng=(src,w,h)=>{const k=Math.min(1,2400/Math
   return null}
 
 var PREFAPP=false;
-async function pasteAny(){if(!book)return;if(PREFAPP&&CLIP){clipPaste();return}
+async function pasteAny(){if(!book)return;if(PREFAPP&&CLIP){const at=window.__pat;window.__pat=null;clipPaste(at);return}
   try{if(navigator.clipboard&&navigator.clipboard.read){const its=await navigator.clipboard.read();for(const it of its){const ty=it.types.find(x=>x==='image/png')||it.types.find(x=>x.startsWith('image/'));if(ty){const bl=await it.getType(ty);const nb=await normBlob(bl);if(nb){const nf=new File([nb],'paste.png',{type:'image/png'});nf._n=1;addImg(nf)}else addImg(new File([bl],'paste',{type:bl.type}));return}}}}catch(e){}
-  if(CLIP){clipPaste();return}gs('ما في صورة بالحافظة. انسخ صورة أول (مثلاً من 📸 التقاط)')}
+  if(CLIP){const at=window.__pat;window.__pat=null;clipPaste(at);return}gs('ما في صورة بالحافظة. انسخ صورة أول (مثلاً من 📸 التقاط)')}
 ;(function(){const bind=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
   bind('lsPaste2',pasteAny);bind('lsPaste',pasteAny);bind('lsPst',pasteAny);
   ['lsCopy','lsCut'].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener('click',()=>{PREFAPP=true})});
