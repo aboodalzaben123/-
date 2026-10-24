@@ -3116,14 +3116,27 @@ function tsErase(d,pts){const pg=d.pg;if(!pts||pts.length<3)return;
         un=()=>{const k=pg.items.indexOf(it);if(k>=0)pg.items.splice(k,1);if(old.length)pg.tx=old;else delete pg.tx;tsRefresh(pg)};
   ap();undo.push({pg,u:un,r:ap});redo=[];rd(pg);save();tsClear();if(tsBar)tsBar.hidden=true;tsA=null;
   gs('انمسح كل اللي جوّا الحلقة (نص ورسوم) ✓ (تراجع متاح)')}
-/* (v5) خلفية شفافة للقطعة المنقولة: "لون إلى شفافية" — كل بكسل بيتفكك لـ (لون الحبر + شفافيته) على أساس لون ورقة الصفحة،
-   فالنص بيضل بحوافه الناعمة وبيطلع الأبيض شفاف. لو ركّبتها فوق نفس الورقة بتطلع مطابقة تمامًا للأصل. */
-function tsAlpha(c2,W,H,col){const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(col||''),B=m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[255,255,255];
-  const im=c2.getImageData(0,0,W,H),D=im.data;
-  for(let i=0;i<D.length;i+=4){const A0=D[i+3];if(!A0)continue;let a=0;
-    for(let c=0;c<3;c++){const v=D[i+c],b=B[c],t=v<b?(b-v)/b:v>b?(v-b)/(255-b):0;if(t>a)a=t}
+/* (v5) خلفية شفافة للقطعة المنقولة: "لون إلى شفافية" — كل بكسل بيتفكك لـ (لون الحبر + شفافيته) على أساس لون الخلفية،
+   فالنص بيضل بحوافه الناعمة وبيطلع الخلفية شفاف. لو ركّبتها فوق نفس الورقة بتطلع مطابقة تمامًا للأصل.
+   (v13.15) مش لون الورقة بس: كمان أي تعبئة فاتحة مسطّحة واخدة 6% أو أكتر من اللي جوّا الحلقة (متل صندوق بيج بالـPDF). */
+function tsBgSet(D,B0){
+  const L=c=>(.299*c[0]+.587*c[1]+.114*c[2])/255,l0=L(B0),bins=new Map();let tot=0;
+  for(let i=0;i<D.length;i+=4){if(D[i+3]<250)continue;tot++;const k=(D[i]>>3)*1024+(D[i+1]>>3)*32+(D[i+2]>>3);let o=bins.get(k);if(!o){o=[0,0,0,0];bins.set(k,o)}o[0]++;o[1]+=D[i];o[2]+=D[i+1];o[3]+=D[i+2]}
+  const out=[B0];if(!tot)return out;
+  [...bins.values()].sort((a,b)=>b[0]-a[0]).slice(0,12).forEach(o=>{if(out.length>=4||o[0]<tot*.06)return;const c=[o[1]/o[0],o[2]/o[0],o[3]/o[0]];
+    if(Math.abs(L(c)-l0)>.4||out.some(q=>Math.hypot(q[0]-c[0],q[1]-c[1],q[2]-c[2])<28))return;out.push(c)});
+  return out}
+function tsAlpha(c2,W,H,col){const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(col||''),B0=m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[255,255,255];
+  const im=c2.getImageData(0,0,W,H),D=im.data,Bs=tsBgSet(D,B0),K=Bs.length;
+  for(let i=0;i<D.length;i+=4){const A0=D[i+3];if(!A0)continue;let a=9,bi=0;
+    for(let j=0;j<K;j++){const B=Bs[j];let t=0;for(let c=0;c<3;c++){const v=D[i+c],b=B[c],u=v<b?(b-v)/b:v>b?(v-b)/(255-b):0;if(u>t)t=u}if(t<a){a=t;bi=j}}
     if(a<.06){D[i+3]=0;continue}
-    for(let c=0;c<3;c++){const f=(D[i+c]-(1-a)*B[c])/a;D[i+c]=f<0?0:f>255?255:f}
+    if(K>1&&a<.35){let near=false;/* بكسل حدّ ناعم بين تعبئتين (متل بيج وأبيض): شفاف */
+      for(let j=0;j<K&&!near;j++)for(let l=j+1;l<K;l++){const P=Bs[j],Q=Bs[l],dx=Q[0]-P[0],dy=Q[1]-P[1],dz=Q[2]-P[2],d2=dx*dx+dy*dy+dz*dz||1;
+        let t=((D[i]-P[0])*dx+(D[i+1]-P[1])*dy+(D[i+2]-P[2])*dz)/d2;t=t<0?0:t>1?1:t;
+        if(Math.hypot(D[i]-P[0]-t*dx,D[i+1]-P[1]-t*dy,D[i+2]-P[2]-t*dz)<10){near=true;break}}
+      if(near){D[i+3]=0;continue}}
+    const B=Bs[bi];for(let c=0;c<3;c++){const f=(D[i+c]-(1-a)*B[c])/a;D[i+c]=f<0?0:f>255?255:f}
     D[i+3]=Math.round(A0*(a>1?1:a))}
   c2.putImageData(im,0,0)}
 function tsMove(d,pts){const pg=d.pg;if(!pts||pts.length<3)return;
