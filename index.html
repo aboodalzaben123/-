@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head><script>if(/[?&]pane=1(&|$)/.test(location.search)&&window.parent!==window){window.__PANE=1;document.documentElement.classList.add('pane');window.__PANE_OTHER=function(){try{return window.parent.__APP.cur()}catch(e){return null}}}</script>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#f3f6fb">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"><meta name="theme-color" content="#f3f6fb">
 <meta name="app-version" content="12">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -2089,7 +2089,11 @@ const upd=()=>{if(curPg>=book.pages.length)curPg=Math.max(0,book.pages.length-1)
 let lpT=0;view.addEventListener('scroll',()=>{if(!book||$('ed').hidden)return;clearTimeout(lpT);lpT=setTimeout(()=>{lpT=0;if(!book||$('ed').hidden)return;const el=pagesEl.children[curPg];if(!el)return;const h=el.offsetHeight||1,o=Math.max(0,Math.min(.95,(view.getBoundingClientRect().top-el.getBoundingClientRect().top)/h));if(book.lp===curPg&&Math.abs((book.lo||0)-o)<.01)return;book.lp=curPg;book.lo=Math.round(o*1000)/1000;NOMOD=1;save();NOMOD=0},400)},{passive:true});
 let scq=0;view.addEventListener('scroll',piShow,{passive:true});view.addEventListener('scroll',()=>{if(scq||!book)return;scq=requestAnimationFrame(()=>{scq=0;const ch=pagesEl.children;if(!ch.length)return;const m=view.getBoundingClientRect().top+view.clientHeight/2,dist=i=>{const r=ch[i].getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-m)};let b=Math.min(curPg,ch.length-1),bd=dist(b);for(;;){let mv=false;if(b>0){const x=dist(b-1);if(x<bd){bd=x;b--;mv=true}}if(!mv&&b<ch.length-1){const x=dist(b+1);if(x<bd){bd=x;b++;mv=true}}if(!mv)break}if(b!==curPg){curPg=b;upd()}})});
 window.addEventListener('resize',()=>{if(!INKD)DOM.forEach(fit)});
-
+/* v13.21: مكان افتراضي لأي شي بينضاف (صورة/نص/صندوق): نص الجزء الظاهر لك من الصفحة. بيرجّع [x,y] (زاوية العنصر العليا اليسرى بوحدات عرض الصفحة) أو null لو الصفحة مش ظاهرة. لو العنصر أطول من الظاهر بينحط من أول الظاهر */
+function visPlace(pg,w,h){try{const d=DOM.get(pg.id);if(!d||!d.el)return null;const r=d.el.getBoundingClientRect(),vr=view.getBoundingClientRect();if(!r.width)return null;
+  const L=Math.max(r.left,vr.left),R=Math.min(r.right,vr.right),T=Math.max(r.top,vr.top),B=Math.min(r.bottom,vr.bottom);if(R-L<20||B-T<20)return null;
+  const cx=((L+R)/2-r.left)/r.width,cy=((T+B)/2-r.top)/r.width,vt=(T-r.top)/r.width,vh=(B-T)/r.width,x=cx-w/2,y=vh>=h?cy-h/2:vt+.02;
+  return[Math.max(0,Math.min(1-w,x)),Math.max(0,Math.min(Math.max(0,pg.ar-h),y))]}catch(e){return null}}
 /* ---------- pages ops ---------- */
 /* ينقل العرض لصفحة معيّنة بعد إعادة رسم الدفتر (renderBook بيرجّع التمرير للأعلى وبيخلّي مستمع التمرير يرجّع curPg للصفحة 1، فنثبّت الرقم ونمرّر فوراً) */
 function goPg(at){curPg=at;upd();const go=()=>{const el=pagesEl.children[at];if(el)el.scrollIntoView({block:'start'})};go();setTimeout(go,60);setTimeout(()=>{if(book&&curPg!==at&&pagesEl.children[at]){curPg=at;upd()}},260)}
@@ -2957,7 +2961,7 @@ $('newB').onclick=newSheet;
 $('nfB').onclick=()=>nameIn('اسم المجلد','',n=>{S.folders=S.folders||[];S.folders.push({id:uid(),name:n,parent:cwd});save();flushSave();showLib()});
 function tagDlg(b){const all=[...new Set(S.books.flatMap(x=>x.tags||[]))];b.tags=b.tags||[];dlg.textContent='';dlg.hidden=false;dlg.append(mk('b','','وسوم: '+(b.title||'')));all.forEach(t=>{const x=mk('button',b.tags.includes(t)?'on':'',t);x.onclick=()=>{b.tags=b.tags.includes(t)?b.tags.filter(z=>z!==t):b.tags.concat(t);save();tagDlg(b)};dlg.append(x)});const n=mk('button','','＋ وسم جديد');n.onclick=()=>nameIn('اسم الوسم','',v=>{if(!b.tags.includes(v))b.tags.push(v);save();tagDlg(b)});const d=mk('button','primary','تم');d.onclick=()=>{dlg.hidden=true;showLib()};dlg.append(n,d)}
 function addImg(f){if(!f||!book)return;
-const place=(src,sw,sh)=>{const k=Math.min(1,2400/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));const g=c.getContext('2d');const tr=window.__imgT;window.__imgT=null;if(!tr){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height)}g.drawImage(src,0,0,c.width,c.height);const pg=book.pages[curPg];let w=Math.min(1,window.__imgW||.6),h;window.__imgW=null;h=w*c.height/c.width;if(h>pg.ar-.1){h=pg.ar-.1;w=h*c.width/c.height}const it={k:'i',src:tr?c.toDataURL('image/png'):c.toDataURL('image/jpeg',.9),x:(1-w)/2,y:.06,w,h};if(tr&&window.__imgG){it.geo=window.__imgG}window.__imgG=null;if(window.__pat){const q=window.__pat;window.__pat=null;it.x=Math.max(0,Math.min(1-w,q[0]-w/2));it.y=Math.max(0,Math.min(pg.ar-h,q[1]-h/2))}pg.items.push(it);undo.push({pg,add:it});redo=[];document.querySelector('[data-t=lasso]').click();setLs({pg,items:[it]});save();gs('انضافت الصورة، حرّكها أو كبّرها من الزاوية')};
+const place=(src,sw,sh)=>{const k=Math.min(1,2400/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));const g=c.getContext('2d');const tr=window.__imgT;window.__imgT=null;if(!tr){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height)}g.drawImage(src,0,0,c.width,c.height);const pg=book.pages[curPg];let w=Math.min(1,window.__imgW||.6),h;window.__imgW=null;h=w*c.height/c.width;if(h>pg.ar-.1){h=pg.ar-.1;w=h*c.width/c.height}const it={k:'i',src:tr?c.toDataURL('image/png'):c.toDataURL('image/jpeg',.9),x:(1-w)/2,y:.06,w,h};if(tr&&window.__imgG){it.geo=window.__imgG}window.__imgG=null;if(window.__pat){const q=window.__pat;window.__pat=null;it.x=Math.max(0,Math.min(1-w,q[0]-w/2));it.y=Math.max(0,Math.min(pg.ar-h,q[1]-h/2))}else{const vp=visPlace(pg,w,h);if(vp){it.x=vp[0];it.y=vp[1]}}pg.items.push(it);undo.push({pg,add:it});redo=[];document.querySelector('[data-t=lasso]').click();setLs({pg,items:[it]});save();gs('انضافت الصورة، حرّكها أو كبّرها من الزاوية')};
 const viaImg=()=>{const u=URL.createObjectURL(f),im=new Image();im.onerror=()=>{URL.revokeObjectURL(u);if(f._n){gs('تعذّر قراءة الصورة');return}normBlob(f).then(b=>{if(b){const nf=new File([b],'p.png',{type:'image/png'});nf._n=1;addImg(nf)}else gs('تعذّر قراءة الصورة: الصيغة غير مدعومة')})};im.onload=()=>{try{place(im,im.naturalWidth,im.naturalHeight)}finally{URL.revokeObjectURL(u)}};im.src=u};
 if(window.createImageBitmap)createImageBitmap(f).then(bm=>{try{place(bm,bm.width,bm.height)}finally{bm.close&&bm.close()}},viaImg);else viaImg()}
 $('imgB').onclick=()=>$('imgIn').click();$('imgIn').onchange=e=>{const f=e.target.files[0];e.target.value='';addImg(f)};
@@ -4446,7 +4450,7 @@ async function importHtmlBox(f,tg,opt){
     if(tg==='new'||!book){const pg=newPage({tpl:'blank'});pg.items.push(it);const b={id:uid(),title:nm,ts:Date.now(),folderId:cwd,pages:[pg]};S.books.push(b);save();open(b)}
     else{let pg=book.pages[curPg];
       if(!pg||pg.cvr||pg.idx||pg.live){pg=newPage({tpl:'blank'});const at=covClamp(curPg+1);book.pages.splice(at,0,pg);renderBook();curPg=at;upd()}
-      it.y=hbY(pg,it.h);
+      it.y=hbY(pg,it.h);{const vp=visPlace(pg,it.w,it.h);if(vp){it.x=vp[0];it.y=Math.max(.02,vp[1])}}
       if(Array.isArray(opt.at)&&opt.at.length>=2){it.x=Math.max(0,Math.min(1-w,+opt.at[0]-w/2));it.y=Math.max(.02,Math.min(+opt.at[1]-h/2,Math.max(.02,pg.ar-h-.02)))}
       pg.items.push(it);undo.push({pg,add:it});redo=[];rd(pg);
       if(!opt.quiet){document.querySelector('[data-t=lasso]').click();setLs({pg,items:[it]})}save()}
@@ -4458,6 +4462,7 @@ async function importHtmlBox(f,tg,opt){
 function hbLive(d,ask){
   if(!d.hbm)d.hbm=new Map();
   const want=tool==='tap'&&d.vis&&d.g?d.pg.items.filter(i=>i.k==='i'&&i.hb):[];
+  hbInk(d,want);
   d.hbm.forEach((o,it)=>{if(want.includes(it)){o.closing=0;o.fr.style.pointerEvents='auto'}else hbClose(d,it,o)});
   const B=d.el.clientWidth||baseW();
   want.forEach(it=>{let o=d.hbm.get(it);
@@ -4469,15 +4474,22 @@ function hbLive(d,ask){
     st.width=Wd+'px';st.height=Hd+'px';st.left=(cx-Wd/2)+'px';st.top=(cy-Hd/2)+'px';st.transform=(it.rot?'rotate('+it.rot+'rad) ':'')+'scale('+f+')';
     /* مكان الزرّين: الزاوية العليا اليمنى جوّا الصندوق (مع الدوران) */
     if(o.bt){const dx=it.w*B/2-40,dy=-it.h*B/2+20,c=Math.cos(it.rot||0),s=Math.sin(it.rot||0);o.bt.style.left=(cx+dx*c-dy*s)+'px';o.bt.style.top=(cy+dx*s+dy*c)+'px';o.bt.style.display=o.closing?'none':'flex'}})}
+/* v13.23: الحبر والنصوص والصور اللي انرسمت فوق الصندوق (بعده بالترتيب) لازم تبين فوق الإطار الحي بأداة 👆 (الإطار بيغطي الصفحة)، متل الصفحة الحيّة. بنرسمها على طبقة شفافة فوق الإطار وبتنشال لما نطلع من أداة 👆 */
+function hbInk(d,want){const pg=d.pg;let lo=1e9;want.forEach(b=>{const i=pg.items.indexOf(b);if(i>=0&&i<lo)lo=i});
+  const above=want.length?pg.items.filter((it,i)=>i>lo&&!it.hb):[];
+  if(!above.length){if(d.hbk){d.hbk.remove();d.hbk=null}return}
+  let k=d.hbk;if(!k){k=d.hbk=document.createElement('canvas');k.className='hbk';k.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:7';d.el.append(k)}
+  if(k.width!==d.cv.width||k.height!==d.cv.height){k.width=d.cv.width;k.height=d.cv.height}
+  drawPage.lv=1;try{drawPage(k.getContext('2d'),Object.assign({},pg,{live:true,bg:null,tpl:'blank',items:above}),k.width)}catch(e){}finally{drawPage.lv=0}}
 /* زرّين فوق الصندوق بأداة 👆: ↺ رجّع لحالته الأصلية، ⧉ كرّر */
 function hbBtns(d,it,o){const w=document.createElement('div');
-  w.style.cssText='position:absolute;z-index:7;display:flex;gap:6px;transform:translate(-50%,-50%);direction:ltr';
+  w.style.cssText='position:absolute;z-index:8;display:flex;gap:6px;transform:translate(-50%,-50%);direction:ltr';
   const mkb=(tx,ti,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=tx;b.title=ti;
     b.style.cssText='width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.25);background:rgba(255,255,255,.92);font-size:18px;line-height:1;padding:0;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)';
     ['pointerdown','pointerup','touchstart','mousedown'].forEach(ev=>b.addEventListener(ev,e=>e.stopPropagation()));
     b.onclick=e=>{e.stopPropagation();e.preventDefault();fn()};return b};
   w.append(mkb('↺','رجّع الصندوق لحالته الأصلية',()=>pick('رجّع الصندوق لأصله؟ (بيمسح تفاعلاتك ومكان التمرير جواه)',[['↺ أيوا، رجّعه',()=>hbReset(d,it,o)]])),
-    mkb('⧉','كرّر الصندوق',()=>hbDup(d,it)));
+    mkb('⧉','كرّر الصندوق',()=>hbDup(d,it,o)));
   d.el.append(w);return w}
 /* رجّع الصندوق للحالة الأصلية: لقطة جديدة من الـHTML المحفوظ، وبيمسح سجل التفاعلات ومكان التمرير */
 async function hbReset(d,it,o){
@@ -4487,10 +4499,12 @@ async function hbReset(d,it,o){
     if(o&&d.hbm&&d.hbm.get(it)===o){o.dirty=0;o.scr=0;o.rdy=0;o.rn=(o.rn||0)+1;o.fr.srcdoc=liveDoc(txt,[],o.rn)}
     save();rd(d.pg);gs('رجع الصندوق لحالته الأصلية ✓')}
   catch(e){gs('تعذّر الرجوع للأصل: '+(e&&e.message||e))}}
-/* كرّر الصندوق: نسخة بنفس الـHTML وبالحالة الحالية (مكان التمرير والتفاعلات)، تمرّر جواها لجزء ثاني من المستند */
-function hbDup(d,it){const pg=d.pg,c=JSON.parse(JSON.stringify(it));
+/* كرّر الصندوق: نسخة بنفس الـHTML وبالحالة الحالية (مكان التمرير والتفاعلات). بتتحدد النسخة وبتتحوّل لأداة التحديد عشان تحرّكها فوراً */
+async function hbDup(d,it,o){const pg=d.pg;
+  if(o&&o.rdy&&(o.dirty||o.scr)){try{await hbApply(d,o)}catch(e){}}
+  const c=JSON.parse(JSON.stringify(it));
   c.x=Math.max(0,Math.min(1-c.w,it.x+.04));c.y=Math.max(.02,Math.min(it.y+.04,Math.max(.02,pg.ar-c.h-.02)));
-  pg.items.push(c);undo.push({pg,add:c});redo=[];rd(pg);save();gs('تكرّر الصندوق ✓ مرّر جوا النسخة لجزء ثاني من المستند')}
+  pg.items.push(c);undo.push({pg,add:c});redo=[];rd(pg);document.querySelector('[data-t=lasso]').click();setLs({pg,items:[c]});save();gs('تكرّر الصندوق ✓ حرّكه للمكان اللي بدك ياه')}
 /* لقطة من الإطار الحي (HTML بحالته الحالية + مكان التمرير + طول المستند) */
 function hbSnap(o){return new Promise(res=>{const id=uid();let done=0,tm=0;const fin=v=>{if(done)return;done=1;removeEventListener('message',h);clearTimeout(tm);res(v)};
   const h=ev=>{const m=ev.data;if(m&&m.nbSnapRes===id&&ev.source===o.fr.contentWindow)fin(m)};
@@ -4499,6 +4513,7 @@ async function hbApply(d,o){const it=o.it,m=await hbSnap(o);if(!m||!m.html)retur
   const W=it.hw||900,th=Math.min(16000,Math.max(200,m.th||it.hh||1200));
   try{const r=await htSlice(htXml(m.html,W,th),W,th,0,th,Math.min(1.6,Math.sqrt(8e6/(W*th))));
     it.src=r.u;it.hh=th;it.hy=Math.max(0,Math.min(m.sy||0,th-W*it.h/it.w));IT.delete(it);o.dirty=0;o.scr=0;save();rd(d.pg);return true}catch(e){return false}}
+function hbGone(d,it,o){o.fr.remove();if(o.bt)o.bt.remove();d.hbm.delete(it)}
 function hbGone(d,it,o){o.fr.remove();if(o.bt)o.bt.remove();d.hbm.delete(it)}
 function hbClose(d,it,o){if(o.closing)return;
   if(!o.rdy||!(o.dirty||o.scr)){hbGone(d,it,o);return}
@@ -4766,7 +4781,8 @@ function tpTxt(r,p){
   const{pg}=tpPg(null),t=typeof p.text==='string'?p.text:'';
   if(!t.trim())throw new Error('text required');if(t.length>2e4)throw new Error('text too long (max 20000)');
   const col=typeof p.color==='string'&&/^#[0-9a-f]{3,8}$/i.test(p.color)?p.color:color,
-    it={k:'t',c:col,s:tpNum(p.size,24,8,120),x:tpNum(p.x,.1,0,.95),y:tpNum(p.y,.12,0,(pg.ar||1.414)-.03),v:t};
+    vp=(p.x==null&&p.y==null)?visPlace(pg,.4,.05):null,
+    it={k:'t',c:col,s:tpNum(p.size,24,8,120),x:vp?Math.min(.95,vp[0]):tpNum(p.x,.1,0,.95),y:vp?Math.min((pg.ar||1.414)-.03,vp[1]):tpNum(p.y,.12,0,(pg.ar||1.414)-.03),v:t};
   pg.items.push(it);undo.push({pg,add:it});redo=[];rd(pg);save();
   return{inserted:true,page:book.pages.indexOf(pg)+1}}
 
@@ -4858,18 +4874,21 @@ async function toolOpen(id,dk){
   if(typeof html!=='string'){gs('ما لقيت ملف الأداة');return}
   if(TOPEN.has(id))return;
   const r={id,name:meta.name,html,data:Object.assign(Object.create(null),data&&typeof data==='object'?data:{}),t:0,dirty:0,nt:0,ut:0,wt:0,g:null,sv:null,pm:Object.assign({},meta.perm&&typeof meta.perm==='object'?meta.perm:{}),pq:{}};
-  const el=mk('div','panel nbt'),hd=mk('div','nbth'),ttl=mk('b','',r.name),bR=mk('button','','↺'),bM=mk('button','','▁'),bF=mk('button','','⛶'),bX=mk('button','','✕'),fr=document.createElement('iframe'),sz=mk('div','nbsz');
-  [[bR,'إعادة تشغيل الأداة'],[bM,'تصغير للشريط'],[bF,'ملء الشاشة (أو دبل كليك على الشريط)'],[bX,'إغلاق']].forEach(([b,t])=>{b.title=t;b.setAttribute('aria-label',t)});
+  const el=mk('div','panel nbt'),hd=mk('div','nbth'),ttl=mk('b','',r.name),bP=mk('button','','📌'),bR=mk('button','','↺'),bM=mk('button','','▁'),bF=mk('button','','⛶'),bX=mk('button','','✕'),fr=document.createElement('iframe'),sz=mk('div','nbsz');
+  [[bP,'أدرج هالأداة بالدفتر (صفحة تفاعلية أو صندوق)'],[bR,'إعادة تشغيل الأداة'],[bM,'تصغير للشريط'],[bF,'ملء الشاشة (أو دبل كليك على الشريط)'],[bX,'إغلاق']].forEach(([b,t])=>{b.title=t;b.setAttribute('aria-label',t)});
   fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-modals allow-downloads');fr.title=r.name;bM.classList.add('nbm');bF.classList.add('nbf');
   const n=TOPEN.size,top0=tHdr()+10;
   let g0={x:10+n*24,y:top0+n*24,w:Math.min(420,innerWidth*.96),h:Math.min(520,innerHeight-top0-20)};
   if(meta.ui&&[meta.ui.x,meta.ui.y,meta.ui.w,meta.ui.h].every(Number.isFinite))g0=meta.ui;
   el.style.zIndex=Math.min(19,++tZ);
-  hd.append(ttl,bR,bM,bF,bX);el.append(hd,fr,sz);
+  hd.append(ttl,bP,bR,bM,bF,bX);el.append(hd,fr,sz);
   ['n','s','e','w','ne','nw','se','sw'].forEach(d=>{const h=mk('div','nbtr');h.dataset.d=d;el.append(h)});
   (dk&&dk.host||document.body).append(el);Object.assign(r,{el,fr,ttl,bM});TOPEN.set(id,r);if(dk)el.classList.add('docked');else tapply(r,tclamp(g0,true));
   el.addEventListener('pointerdown',()=>{el.style.zIndex=Math.min(19,++tZ)},true);
   bX.onclick=()=>{toolClose(r);if(dk&&dk.onClose)dk.onClose()};bR.onclick=()=>toolReload(r);
+  /* v13.21: 📌 أدرج الأداة نفسها بالدفتر (صفحة تفاعلية أو صندوق) بدون ما تحتاج NB: نفس مسار استيراد HTML بزر ＋ */
+  bP.onclick=()=>{const f=new File([r.html],(r.name||'tool').replace(/[\\\/:*?"<>|]/g,'_').slice(0,60)+'.html',{type:'text/html'}),go=fn=>()=>{if(!el.classList.contains('min'))bM.click();fn()};
+    pick('أدرج «'+r.name+'» بالدفتر كـ:',[['🧱 صندوق جوّا الصفحة (حرّكه وكبّره، وبأداة 👆 بتكبس جواه)',go(()=>importHtmlBox(f,'cur'))],['🖱 صفحة تفاعلية كاملة',go(()=>importHtml(f,'cur',true))]])};
   bM.onclick=()=>{const m=el.classList.toggle('min');if(m&&el.classList.contains('max'))setMax(false);bM.textContent=m?'▭':'▁';bM.title=m?'رجّع الأداة':'تصغير للشريط'};
   const setMax=v=>{if(el.classList.contains('docked'))return;if(v){if(el.classList.contains('min'))bM.click();r.sv=r.g;el.classList.add('max');tapply(r,{x:6,y:tHdr()+6,w:innerWidth-12,h:innerHeight-tHdr()-12})}else{el.classList.remove('max');tapply(r,tclamp(r.sv||g0,true));r.sv=null}};
   bF.onclick=()=>setMax(!el.classList.contains('max'));
@@ -5555,8 +5574,16 @@ document.addEventListener('contextmenu',e=>{if(e.target&&e.target.tagName==='CAN
 let pz=null;const tdist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
 view.addEventListener('touchstart',e=>{if(e.touches.length===2){const r=view.getBoundingClientRect();pagesEl.querySelectorAll('canvas').forEach(c=>c.dispatchEvent(new Event('nbcancel')));pz={sl:view.scrollLeft,st:view.scrollTop,d:tdist(e.touches),z:zoom,k:1,cx:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,cy:(e.touches[0].clientY+e.touches[1].clientY)/2-r.top};pz.a=zAnc(pz.cx,pz.cy);pinching=true;pagesEl.style.transformOrigin=(pz.cx+sxN())+'px '+(pz.cy+view.scrollTop)+'px'}},{passive:true});
 view.addEventListener('touchmove',e=>{if(pz&&e.touches.length===2){e.preventDefault();pz.k=Math.max(ZMIN/pz.z,Math.min(ZMAX/pz.z,tdist(e.touches)/pz.d));pagesEl.style.transform='scale('+pz.k+')';zBadge(Math.round(pz.z*pz.k*100)+'%');const r=view.getBoundingClientRect(),nx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,ny=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top;pz.ex=nx;pz.ey=ny;view.scrollLeft=pz.sl+pz.cx-nx;view.scrollTop=pz.st+pz.cy-ny}},{passive:false});
-const endPinch=e=>{if(!pz||e.touches.length>=2)return;const p=pz;pz=null;pagesEl.style.transform='';pagesEl.style.transformOrigin='';if(Math.abs(p.k-1)>.02)setZoom(p.z*p.k,p.ex!=null?p.ex:p.cx,p.ey!=null?p.ey:p.cy,p.a);setTimeout(()=>{pinching=false},80)};
+const endPinch=e=>{if(!pz||e.touches.length>=2)return;const p=pz;pz=null;pagesEl.style.transform='';pagesEl.style.transformOrigin='';try{if(Math.abs(p.k-1)>.02)setZoom(p.z*p.k,p.ex!=null?p.ex:p.cx,p.ey!=null?p.ey:p.cy,p.a)}finally{setTimeout(()=>{pinching=false},80)}};
 view.addEventListener('touchend',endPinch);view.addEventListener('touchcancel',endPinch);
+/* v13.20: قرصة عالقة: لو التطبيق انعلّق بالخلفية بنص قرصة (أو انقطعت اللمسة) ما بيوصل touchend، فبيضل pinching شغّال (بيوقف سحب الصفحة بالإصبع) وبتضل الصفحة مكبّرة بالـtransform. بنصفّرها لما يرجع التطبيق ولما تبلّش لمسة بإصبع واحد (القرصة الحقيقية ما بتضل بإصبع واحد) */
+const pzClear=()=>{if(pz||pinching){pz=null;pagesEl.style.transform='';pagesEl.style.transformOrigin='';pinching=false}};
+view.addEventListener('touchstart',e=>{if(e.touches.length===1&&pz)pzClear()},{passive:true,capture:true});
+const pzResume=()=>{try{const v0=window.visualViewport;try{window.__ERRLOG&&__ERRLOG.add('silent','رجوع للتطبيق: pz='+(pz?1:0)+' pinching='+(pinching?1:0)+' LK='+(LK?1:0)+' PDN='+PDN+' INKD='+INKD+' | view scroll '+Math.round(view.scrollLeft)+','+Math.round(view.scrollTop)+' من '+view.scrollWidth+'x'+view.scrollHeight+' (ظاهر '+view.clientWidth+'x'+view.clientHeight+') | نافذة '+innerWidth+'x'+innerHeight+(v0?' | visualViewport scale='+v0.scale.toFixed(2)+' off='+Math.round(v0.offsetLeft)+','+Math.round(v0.offsetTop)+' page='+Math.round(v0.pageLeft)+','+Math.round(v0.pageTop):''),'resume')}catch(_){}
+pzClear();PDN=0;INKD=0;LK=null;window.scrollTo(0,0);const v=window.visualViewport;if(v&&v.scale>1.02)gs('الشاشة مكبّرة من النظام: اقرص بإصبعين لتصغيرها')}catch(_){}};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pzResume()});addEventListener('pageshow',pzResume);
+/* ما نخلي آيباد يكبّر الصفحة كلها بالقرص (التطبيق عنده تكبيره الخاص بالدفتر) */
+['gesturestart','gesturechange'].forEach(n=>document.addEventListener(n,e=>e.preventDefault(),{passive:false}));
 view.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();setZoom(zoom*(e.deltaY<0?1.1:1/1.1),e.clientX-view.getBoundingClientRect().left,e.clientY-view.getBoundingClientRect().top)}},{passive:false});
 /* ---------- start ---------- */
 window.addEventListener('error',e=>{if(/ResizeObserver loop/.test(e.message||''))return;gs('خطأ: '+e.message)});window.addEventListener('unhandledrejection',e=>gs('خطأ: '+(e.reason&&e.reason.message||e.reason)));
