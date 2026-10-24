@@ -1067,7 +1067,7 @@ let NOMOD=0;const save=()=>{if(book&&!NOMOD)book.mod=Date.now();svMark();clearTi
 /* قبل ما نترك دفتر (فتح دفتر ثاني أو الرجوع للمكتبة): نضمن حفظ الدفتر اللي كنا فيه */
 {const o=open;open=function(b){if(book&&b!==book){NOMOD=1;try{save()}finally{NOMOD=0}}return o.apply(this,arguments)}}
 {const o=showLib;showLib=function(){if(book){NOMOD=1;try{save()}finally{NOMOD=0}}return o.apply(this,arguments)}}
-const flushSave=()=>{if(st){clearTimeout(st);st=0;putNow()}};
+const flushSave=()=>{try{lpFlush()}catch(e){}if(st){clearTimeout(st);st=0;putNow()}};
 addEventListener('pagehide',flushSave);addEventListener('beforeunload',flushSave);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSave()});
 window.__APP={get S(){return S},putNow:()=>{const o=window.__PANE_OTHER&&window.__PANE_OTHER();if(o&&o.id===SV.pl)SV.dirty.add(o.id);else SV.all=true;SV.pl=o?o.id:null;svFlush()},dbq:(m,k,v)=>(m==='get'&&k==='lib')?Promise.resolve(null):dbq(m,k,v),cur:()=>book,open:b=>open(b),col:()=>{try{return book?colOf(book):''}catch(e){return ''}},flush:()=>flushSave()};
@@ -2089,6 +2089,14 @@ const upd=()=>{if(curPg>=book.pages.length)curPg=Math.max(0,book.pages.length-1)
 let lpT=0;view.addEventListener('scroll',()=>{if(!book||$('ed').hidden)return;clearTimeout(lpT);lpT=setTimeout(()=>{lpT=0;if(!book||$('ed').hidden)return;const el=pagesEl.children[curPg];if(!el)return;const h=el.offsetHeight||1,o=Math.max(0,Math.min(.95,(view.getBoundingClientRect().top-el.getBoundingClientRect().top)/h));if(book.lp===curPg&&Math.abs((book.lo||0)-o)<.01)return;book.lp=curPg;book.lo=Math.round(o*1000)/1000;NOMOD=1;save();NOMOD=0},400)},{passive:true});
 let scq=0;view.addEventListener('scroll',piShow,{passive:true});view.addEventListener('scroll',()=>{if(scq||!book)return;scq=requestAnimationFrame(()=>{scq=0;const ch=pagesEl.children;if(!ch.length)return;const m=view.getBoundingClientRect().top+view.clientHeight/2,dist=i=>{const r=ch[i].getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-m)};let b=Math.min(curPg,ch.length-1),bd=dist(b);for(;;){let mv=false;if(b>0){const x=dist(b-1);if(x<bd){bd=x;b--;mv=true}}if(!mv&&b<ch.length-1){const x=dist(b+1);if(x<bd){bd=x;b++;mv=true}}if(!mv)break}if(b!==curPg){curPg=b;upd()}})});
 window.addEventListener('resize',()=>{if(!INKD)DOM.forEach(fit)});
+/* v13.25: احفظ آخر صفحة ومكانك فيها فوراً (بدون انتظار الـ400ms) لما التطبيق يروح للخلفية أو يتسكّر، وإلا الطلعة السريعة بتحفظ الصفحة القديمة */
+function lpFlush(){if(!book||$('ed').hidden)return;const ch=pagesEl.children;if(!ch.length||!view.clientHeight)return;
+  const vt=view.getBoundingClientRect().top,m=vt+view.clientHeight/2,dist=i=>{const r=ch[i].getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-m)};
+  let b=Math.min(curPg,ch.length-1),bd=dist(b);for(;;){let mv=false;if(b>0){const x=dist(b-1);if(x<bd){bd=x;b--;mv=true}}if(!mv&&b<ch.length-1){const x=dist(b+1);if(x<bd){bd=x;b++;mv=true}}if(!mv)break}
+  if(b!==curPg){curPg=b;upd()}
+  const el=ch[curPg],h=el.offsetHeight||1,lo=Math.round(Math.max(0,Math.min(.95,(vt-el.getBoundingClientRect().top)/h))*1000)/1000;
+  clearTimeout(lpT);lpT=0;if(book.lp===curPg&&Math.abs((book.lo||0)-lo)<.01)return;
+  book.lp=curPg;book.lo=lo;NOMOD=1;try{save()}finally{NOMOD=0}}
 /* v13.21: مكان افتراضي لأي شي بينضاف (صورة/نص/صندوق): نص الجزء الظاهر لك من الصفحة. بيرجّع [x,y] (زاوية العنصر العليا اليسرى بوحدات عرض الصفحة) أو null لو الصفحة مش ظاهرة. لو العنصر أطول من الظاهر بينحط من أول الظاهر */
 function visPlace(pg,w,h){try{const d=DOM.get(pg.id);if(!d||!d.el)return null;const r=d.el.getBoundingClientRect(),vr=view.getBoundingClientRect();if(!r.width)return null;
   const L=Math.max(r.left,vr.left),R=Math.min(r.right,vr.right),T=Math.max(r.top,vr.top),B=Math.min(r.bottom,vr.bottom);if(R-L<20||B-T<20)return null;
@@ -4428,8 +4436,9 @@ function hbDraw(g,it,m,cw){
   g.strokeStyle='rgba(0,0,0,.2)';g.lineWidth=Math.max(1,cw/700);g.strokeRect(0,0,Wd,Hd);g.restore();return true}
 function hbY(pg,h){try{const d=DOM.get(pg.id),r=d.el.getBoundingClientRect(),vr=view.getBoundingClientRect(),y=(vr.top-r.top)/r.width+.04;return Math.max(.04,Math.min(y,pg.ar-h-.02))}catch(e){return .06}}
 /* لقطة طويلة للمستند كله بعرض W (بيستخدمها الاستيراد وزر الرجوع للأصل) */
-async function hbRender(txt,W){const fr=document.createElement('iframe');
-  try{fr.setAttribute('sandbox','allow-same-origin');fr.style.cssText='position:fixed;left:-12000px;top:0;width:'+W+'px;height:1200px;border:0;background:#fff';document.body.append(fr);
+/* V: ارتفاع نافذة القياس. لازم يساوي ارتفاع نافذة الإطار الحي (وإلا مستند بـ min-height:100vh أو بتوسيط عامودي بيطلع بالصورة بمكان غير مكانه بأداة 👆). عند الاستيراد 800 (بينتج نافذة الصندوق ~800)، وعند الرجوع للأصل ارتفاع نافذة الصندوق الحالي */
+async function hbRender(txt,W,V){const fr=document.createElement('iframe');
+  try{fr.setAttribute('sandbox','allow-same-origin');fr.style.cssText='position:fixed;left:-12000px;top:0;width:'+W+'px;height:'+Math.max(200,Math.round(V||800))+'px;border:0;background:#fff';document.body.append(fr);
     await new Promise(r=>{fr.onload=r;fr.srcdoc=txt});await new Promise(r=>setTimeout(r,400));
     const dd=fr.contentDocument,total=Math.min(16000,Math.max(dd.documentElement.scrollHeight,dd.body?dd.body.scrollHeight:0,200));
     let u;try{u=(await htSlice(htXml(txt,W,total),W,total,0,total,Math.min(1.6,Math.sqrt(8e6/(W*total))))).u}catch(er){u=hbBlank(W,Math.min(total,900))}
@@ -4494,7 +4503,7 @@ function hbBtns(d,it,o){const w=document.createElement('div');
 /* رجّع الصندوق للحالة الأصلية: لقطة جديدة من الـHTML المحفوظ، وبيمسح سجل التفاعلات ومكان التمرير */
 async function hbReset(d,it,o){
   try{const txt=await dbq('get',it.hb);if(!txt){gs('ما لقيت الـHTML الأصلي للصندوق');return}
-    gs('عم برجّع الصندوق...');const r=await hbRender(txt,it.hw||900);
+    gs('عم برجّع الصندوق...');const r=await hbRender(txt,it.hw||900,(it.hw||900)*it.h/it.w);
     it.src=r.u;it.hh=r.total;it.hy=0;delete it.hl;IT.delete(it);
     if(o&&d.hbm&&d.hbm.get(it)===o){o.dirty=0;o.scr=0;o.rdy=0;o.rn=(o.rn||0)+1;o.fr.srcdoc=liveDoc(txt,[],o.rn)}
     save();rd(d.pg);gs('رجع الصندوق لحالته الأصلية ✓')}
